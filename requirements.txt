@@ -1,1 +1,7 @@
-pip install streamlit plotly pandas numpy requests openpyxl xlsxwriter
+streamlit 
+plotly 
+pandas 
+numpy 
+requests 
+openpyxl 
+xlsxwriter
