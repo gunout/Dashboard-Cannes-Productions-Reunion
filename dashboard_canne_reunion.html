@@ -1,0 +1,4947 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Canne à Sucre - La Réunion</title>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0; padding: 24px;
+    background: #f5f7fa; color: #333;
+    line-height: 1.6;
+  }
+  .header {
+    text-align: center; font-size: 2.2rem; font-weight: bold;
+    background: linear-gradient(90deg, #2E8B57, #3CB371);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.5rem;
+  }
+  .subheader { text-align: center; color: #666; margin-bottom: 2rem; }
+
+  /* === Barre de sélection d'année === */
+  .year-selector {
+    background: white;
+    border-radius: 15px;
+    padding: 1.2rem 1.5rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .year-selector label {
+    font-weight: 600;
+    color: #2E8B57;
+    font-size: 1rem;
+  }
+  .year-selector input[type="range"] {
+    flex: 1;
+    min-width: 200px;
+    accent-color: #2E8B57;
+  }
+  .year-display {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #2E8B57;
+    min-width: 80px;
+    text-align: center;
+  }
+  .year-buttons {
+    display: flex;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+  }
+  .year-btn {
+    padding: 0.4rem 0.8rem;
+    border: 2px solid #2E8B57;
+    background: white;
+    color: #2E8B57;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+  }
+  .year-btn:hover { background: #e0f0e0; }
+  .year-btn.active { background: #2E8B57; color: white; }
+
+  /* === Frise chronologique === */
+  .timeline-container {
+    background: white;
+    border-radius: 15px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+    overflow-x: auto;
+  }
+  .timeline-track {
+    position: relative;
+    min-height: 160px;
+    padding: 2rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    min-width: 100%;
+  }
+  .timeline-track::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #2E8B57, #3CB371);
+    border-radius: 2px;
+    z-index: 0;
+  }
+  .timeline-event {
+    position: relative;
+    flex: 0 0 auto;
+    width: 140px;
+    cursor: pointer;
+    z-index: 1;
+  }
+  .timeline-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: white;
+    border: 3px solid #2E8B57;
+    margin: 0 auto;
+    position: relative;
+    transition: all 0.2s;
+  }
+  .timeline-event:hover .timeline-dot {
+    transform: scale(1.4);
+    box-shadow: 0 0 0 6px rgba(46,139,87,0.2);
+  }
+  .timeline-event.selected .timeline-dot {
+    background: #2E8B57;
+    transform: scale(1.5);
+  }
+  .timeline-event.climat .timeline-dot { border-color: #e74c3c; }
+  .timeline-event.politique .timeline-dot { border-color: #3498db; }
+  .timeline-event.economie .timeline-dot { border-color: #f39c12; }
+  .timeline-event.recherche .timeline-dot { border-color: #9b59b6; }
+  .timeline-event.energie .timeline-dot { border-color: #16a085; }
+  .timeline-event.institution .timeline-dot { border-color: #34495e; }
+  .timeline-event.histoire .timeline-dot { border-color: #7f8c8d; }
+
+  .timeline-year {
+    text-align: center;
+    font-weight: bold;
+    font-size: 0.85rem;
+    color: #2E8B57;
+    margin-top: 0.5rem;
+  }
+  .timeline-label {
+    text-align: center;
+    font-size: 0.75rem;
+    color: #666;
+    margin-top: 0.2rem;
+    height: 2.4rem;
+    overflow: hidden;
+  }
+  .timeline-event:hover .timeline-label { color: #2E8B57; font-weight: 600; }
+
+  /* === Tooltip événement === */
+  .timeline-tooltip {
+    position: fixed;
+    background: white;
+    border-radius: 12px;
+    padding: 1rem 1.2rem;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    border-left: 4px solid #2E8B57;
+    max-width: 320px;
+    z-index: 1000;
+    display: none;
+    pointer-events: none;
+  }
+  .timeline-tooltip.visible { display: block; }
+  .timeline-tooltip h4 {
+    margin: 0 0 0.3rem 0;
+    color: #2E8B57;
+    font-size: 1rem;
+  }
+  .timeline-tooltip .tt-year {
+    font-weight: bold;
+    font-size: 1.2rem;
+    color: #333;
+  }
+  .timeline-tooltip .tt-type {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    background: #e0f0e0;
+    color: #2E8B57;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+  .timeline-tooltip p {
+    margin: 0.3rem 0 0 0;
+    font-size: 0.85rem;
+    color: #555;
+  }
+
+  /* === KPI / Charts === */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem; margin-bottom: 2rem;
+  }
+  .metric-card {
+    background: linear-gradient(135deg, #f0f8f0, #e0f0e0);
+    padding: 1.2rem; border-radius: 15px;
+    border-left: 5px solid #2E8B57;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transition: transform 0.2s;
+  }
+  .metric-card:hover { transform: translateY(-3px); }
+  .metric-label {
+    font-size: 0.85rem; color: #666;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .metric-value {
+    font-size: 1.8rem; font-weight: bold;
+    color: #2E8B57; margin: 0.3rem 0;
+  }
+  .metric-delta { font-size: 0.9rem; }
+  .positive { color: #28a745; }
+  .negative { color: #dc3545; }
+  .section-title {
+    color: #2E8B57; border-bottom: 3px solid #2E8B57;
+    padding-bottom: 0.5rem; margin: 2rem 0 1rem 0;
+    font-size: 1.4rem;
+  }
+  .chart-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+    gap: 1.5rem; margin-bottom: 1.5rem;
+  }
+  .chart-card {
+    background: white; border-radius: 15px; padding: 1rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
+  .chart-card h3 {
+    margin: 0 0 0.8rem 0; font-size: 1rem;
+    color: #333; font-weight: 600;
+  }
+  .plot { width: 100%; height: 400px; }
+  .footer {
+    text-align: center; color: #666; font-size: 0.85rem;
+    margin-top: 2rem; padding-top: 1rem;
+    border-top: 1px solid #ddd;
+  }
+  .footer strong { color: #2E8B57; }
+
+  /* === Panneau détail année === */
+  .year-detail {
+    background: white;
+    border-radius: 15px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+    border-left: 5px solid #2E8B57;
+  }
+  .year-detail h3 {
+    margin: 0 0 1rem 0;
+    color: #2E8B57;
+    font-size: 1.2rem;
+  }
+  .year-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+  }
+  .year-detail-item {
+    padding: 0.8rem;
+    background: #f8fdf8;
+    border-radius: 10px;
+    border-left: 3px solid #3CB371;
+  }
+  .year-detail-item .lbl {
+    font-size: 0.75rem;
+    color: #666;
+    text-transform: uppercase;
+  }
+  .year-detail-item .val {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #2E8B57;
+  }
+
+  @media (max-width: 700px) {
+    .chart-grid { grid-template-columns: 1fr; }
+    .header { font-size: 1.5rem; }
+    body { padding: 12px; }
+    .timeline-event { width: 110px; }
+  }
+</style>
+</head>
+<body>
+
+  <h1 class="header">🌴 Dashboard Canne à Sucre - La Réunion</h1>
+  <p class="subheader">Données 2000-2024 • Frise chronologique interactive • 25 ans d'historique</p>
+
+  <!-- === Sélecteur d'année === -->
+  <div class="year-selector">
+    <label for="yearSlider">📅 Année :</label>
+    <input type="range" id="yearSlider" min="2000" max="2024" value="2024" step="1">
+    <div class="year-display" id="yearDisplay">2024</div>
+    <div class="year-buttons" id="yearButtons"></div>
+  </div>
+
+  <!-- === Frise chronologique === -->
+  <h2 class="section-title">🕰️ Frise Chronologique Interactive</h2>
+  <div class="timeline-container">
+    <div class="timeline-track" id="timelineTrack"></div>
+  </div>
+
+  <!-- === Détail de l'année sélectionnée === -->
+  <div class="year-detail" id="yearDetail">
+    <h3>📋 Détail de l'année <span id="detailYear">2024</span></h3>
+    <div class="year-detail-grid" id="yearDetailGrid"></div>
+  </div>
+
+  <!-- === KPIs === -->
+  <h2 class="section-title">📈 Métriques de Performance</h2>
+  <div id="kpiGrid" class="kpi-grid"></div>
+
+  <!-- === Graphiques === -->
+  <h2 class="section-title">📊 Production et Économie</h2>
+  <div class="chart-grid">
+    <div class="chart-card"><h3>Évolution de la Production</h3><div id="chartProduction" class="plot"></div></div>
+    <div class="chart-card"><h3>Rendement vs Surface</h3><div id="chartRendement" class="plot"></div></div>
+  </div>
+  <div class="chart-grid">
+    <div class="chart-card"><h3>Répartition de la Production</h3><div id="chartWaterfall" class="plot"></div></div>
+    <div class="chart-card"><h3>Types de Sucre</h3><div id="chartSucres" class="plot"></div></div>
+  </div>
+
+  <h2 class="section-title">⚡ Énergie et Bagasse</h2>
+  <div class="chart-grid">
+    <div class="chart-card"><h3>Production Bagasse et Pellets</h3><div id="chartBagasse" class="plot"></div></div>
+    <div class="chart-card"><h3>Électricité Bagasse</h3><div id="chartElectricite" class="plot"></div></div>
+  </div>
+
+  <h2 class="section-title">🌱 Agronomie et Environnement</h2>
+  <div class="chart-grid">
+    <div class="chart-card"><h3>Systèmes Économes en Herbicides</h3><div id="chartCanecoh" class="plot"></div></div>
+    <div class="chart-card"><h3>IFT Moyen (2000-2024)</h3><div id="chartIFT" class="plot"></div></div>
+  </div>
+  <div class="chart-grid">
+    <div class="chart-card"><h3>Pluviométrie et Température</h3><div id="chartClimat" class="plot"></div></div>
+    <div class="chart-card"><h3>Nombre de Cyclones par An</h3><div id="chartCyclones" class="plot"></div></div>
+  </div>
+
+  <h2 class="section-title">🗺️ Cartographie et Structure</h2>
+  <div class="chart-grid">
+    <div class="chart-card"><h3>Production par Commune</h3><div id="chartTreemap" class="plot"></div></div>
+    <div class="chart-card"><h3>Top 10 Communes</h3><div id="chartBarCommune" class="plot"></div></div>
+  </div>
+  <div class="chart-grid">
+    <div class="chart-card"><h3>Bassins de Production</h3><div id="chartBassins" class="plot"></div></div>
+    <div class="chart-card"><h3>Emplois de la Filière</h3><div id="chartEmplois" class="plot"></div></div>
+  </div>
+
+  <h2 class="section-title">🌤️ Météo</h2>
+  <div class="chart-grid">
+    <div class="chart-card"><h3>Températures (12 derniers mois)</h3><div id="chartMeteo" class="plot"></div></div>
+    <div class="chart-card"><h3>Précipitations</h3><div id="chartPrecip" class="plot"></div></div>
+  </div>
+
+  <h2 class="section-title">🔮 Projections et Durabilité</h2>
+  <div class="chart-grid">
+    <div class="chart-card"><h3>Rendements Futurs (MOSICAS)</h3><div id="chartMosicas" class="plot"></div></div>
+    <div class="chart-card"><h3>Subventions et Aides</h3><div id="chartSubventions" class="plot"></div></div>
+  </div>
+
+  <div class="footer">
+    <strong>Sources :</strong> CIRAD Dataverse • ODEADOM • DAAF Réunion • Météo-France • OER • EGC • BSV<br>
+    Généré le 24/09/2026 01:33 • 25 années de données
+  </div>
+
+<!-- Tooltip frise -->
+<div class="timeline-tooltip" id="timelineTooltip">
+  <span class="tt-type" id="ttType"></span>
+  <div class="tt-year" id="ttYear"></div>
+  <h4 id="ttTitle"></h4>
+  <p id="ttDesc"></p>
+</div>
+
+<script>
+// ============================================================
+// DONNÉES INJECTÉES
+// ============================================================
+const AGRICULTURE = [
+  {
+    "annee": 2000,
+    "production_total": 2028373,
+    "production_sucre": 1164454,
+    "production_rhum": 164577,
+    "production_bagasse": 577626,
+    "electricite_bagasse": 86643.9,
+    "surface_cultivee": 25920,
+    "rendement": 78.3,
+    "prix_tonne": 48.2,
+    "valeur_production_m_eur": 97.8,
+    "marge_estimee_m_eur": 75.7,
+    "emplois_total": 19215,
+    "exploitations": 2970,
+    "exportations_pct": 92.03262189899186,
+    "ift_moyen": 4.93,
+    "pluviometrie_mm": 1863.0,
+    "temp_moyenne": 23.39,
+    "nb_cyclones": 3,
+    "aide_pac_m_eur": NaN
+  },
+  {
+    "annee": 2001,
+    "production_total": 1942363,
+    "production_sucre": 1139389,
+    "production_rhum": 182047,
+    "production_bagasse": 582444,
+    "electricite_bagasse": 87366.7,
+    "surface_cultivee": 25703,
+    "rendement": 75.6,
+    "prix_tonne": 48.6,
+    "valeur_production_m_eur": 94.4,
+    "marge_estimee_m_eur": 72.6,
+    "emplois_total": 19123,
+    "exploitations": 2943,
+    "exportations_pct": 89.01298951982983,
+    "ift_moyen": 4.76,
+    "pluviometrie_mm": 1897.0,
+    "temp_moyenne": 23.7,
+    "nb_cyclones": 1,
+    "aide_pac_m_eur": NaN
+  },
+  {
+    "annee": 2002,
+    "production_total": 1965661,
+    "production_sucre": 1124611,
+    "production_rhum": 171753,
+    "production_bagasse": 609302,
+    "electricite_bagasse": 91395.3,
+    "surface_cultivee": 25397,
+    "rendement": 77.4,
+    "prix_tonne": 49.0,
+    "valeur_production_m_eur": 96.3,
+    "marge_estimee_m_eur": 74.7,
+    "emplois_total": 19032,
+    "exploitations": 2916,
+    "exportations_pct": 91.33294734028475,
+    "ift_moyen": 4.9,
+    "pluviometrie_mm": 1838.0,
+    "temp_moyenne": 23.84,
+    "nb_cyclones": 1,
+    "aide_pac_m_eur": NaN
+  },
+  {
+    "annee": 2003,
+    "production_total": 1874339,
+    "production_sucre": 1110172,
+    "production_rhum": 164040,
+    "production_bagasse": 539501,
+    "electricite_bagasse": 80925.2,
+    "surface_cultivee": 24667,
+    "rendement": 76.0,
+    "prix_tonne": 49.4,
+    "valeur_production_m_eur": 92.6,
+    "marge_estimee_m_eur": 71.6,
+    "emplois_total": 18940,
+    "exploitations": 2889,
+    "exportations_pct": 91.72170985641071,
+    "ift_moyen": 4.68,
+    "pluviometrie_mm": 1657.0,
+    "temp_moyenne": 23.78,
+    "nb_cyclones": 1,
+    "aide_pac_m_eur": NaN
+  },
+  {
+    "annee": 2004,
+    "production_total": 1847790,
+    "production_sucre": 1109550,
+    "production_rhum": 151110,
+    "production_bagasse": 536102,
+    "electricite_bagasse": 80415.3,
+    "surface_cultivee": 24408,
+    "rendement": 75.7,
+    "prix_tonne": 49.8,
+    "valeur_production_m_eur": 92.0,
+    "marge_estimee_m_eur": 71.3,
+    "emplois_total": 18849,
+    "exploitations": 2862,
+    "exportations_pct": 89.90012060259178,
+    "ift_moyen": 4.51,
+    "pluviometrie_mm": 1573.0,
+    "temp_moyenne": 23.77,
+    "nb_cyclones": 2,
+    "aide_pac_m_eur": NaN
+  },
+  {
+    "annee": 2005,
+    "production_total": 1869537,
+    "production_sucre": 1063420,
+    "production_rhum": 170898,
+    "production_bagasse": 547668,
+    "electricite_bagasse": 82150.3,
+    "surface_cultivee": 24170,
+    "rendement": 77.3,
+    "prix_tonne": 50.2,
+    "valeur_production_m_eur": 93.9,
+    "marge_estimee_m_eur": 73.3,
+    "emplois_total": 18757,
+    "exploitations": 2835,
+    "exportations_pct": 91.79343278994266,
+    "ift_moyen": 4.5,
+    "pluviometrie_mm": 2066.0,
+    "temp_moyenne": 23.78,
+    "nb_cyclones": 1,
+    "aide_pac_m_eur": NaN
+  },
+  {
+    "annee": 2006,
+    "production_total": 1854958,
+    "production_sucre": 1051261,
+    "production_rhum": 164997,
+    "production_bagasse": 577168,
+    "electricite_bagasse": 86575.2,
+    "surface_cultivee": 23725,
+    "rendement": 78.2,
+    "prix_tonne": 51.16,
+    "valeur_production_m_eur": 94.9,
+    "marge_estimee_m_eur": 74.7,
+    "emplois_total": 18666,
+    "exploitations": 2808,
+    "exportations_pct": 88.21861222170295,
+    "ift_moyen": 4.44,
+    "pluviometrie_mm": 1951.0,
+    "temp_moyenne": 23.67,
+    "nb_cyclones": 2,
+    "aide_pac_m_eur": NaN
+  },
+  {
+    "annee": 2007,
+    "production_total": 1841772,
+    "production_sucre": 1028857,
+    "production_rhum": 175351,
+    "production_bagasse": 541212,
+    "electricite_bagasse": 81181.8,
+    "surface_cultivee": 23579,
+    "rendement": 78.1,
+    "prix_tonne": 52.12,
+    "valeur_production_m_eur": 96.0,
+    "marge_estimee_m_eur": 76.0,
+    "emplois_total": 18574,
+    "exploitations": 2781,
+    "exportations_pct": 88.22918233428096,
+    "ift_moyen": 4.58,
+    "pluviometrie_mm": 1735.0,
+    "temp_moyenne": 23.36,
+    "nb_cyclones": 0,
+    "aide_pac_m_eur": NaN
+  },
+  {
+    "annee": 2008,
+    "production_total": 1823009,
+    "production_sucre": 1038401,
+    "production_rhum": 161893,
+    "production_bagasse": 577787,
+    "electricite_bagasse": 86668.2,
+    "surface_cultivee": 22892,
+    "rendement": 79.6,
+    "prix_tonne": 53.08,
+    "valeur_production_m_eur": 96.8,
+    "marge_estimee_m_eur": 77.3,
+    "emplois_total": 18483,
+    "exploitations": 2754,
+    "exportations_pct": 92.77583697894548,
+    "ift_moyen": 4.54,
+    "pluviometrie_mm": 2145.0,
+    "temp_moyenne": 23.93,
+    "nb_cyclones": 1,
+    "aide_pac_m_eur": NaN
+  },
+  {
+    "annee": 2009,
+    "production_total": 1788111,
+    "production_sucre": 1009531,
+    "production_rhum": 174777,
+    "production_bagasse": 504892,
+    "electricite_bagasse": 75733.9,
+    "surface_cultivee": 22782,
+    "rendement": 78.5,
+    "prix_tonne": 54.04,
+    "valeur_production_m_eur": 96.6,
+    "marge_estimee_m_eur": 77.3,
+    "emplois_total": 18391,
+    "exploitations": 2727,
+    "exportations_pct": 90.77624743660408,
+    "ift_moyen": 4.36,
+    "pluviometrie_mm": 1827.0,
+    "temp_moyenne": 23.82,
+    "nb_cyclones": 1,
+    "aide_pac_m_eur": NaN
+  },
+  {
+    "annee": 2010,
+    "production_total": 1758423,
+    "production_sucre": 1032245,
+    "production_rhum": 156481,
+    "production_bagasse": 536525,
+    "electricite_bagasse": 80478.9,
+    "surface_cultivee": 22399,
+    "rendement": 78.5,
+    "prix_tonne": 55.0,
+    "valeur_production_m_eur": 96.7,
+    "marge_estimee_m_eur": 77.7,
+    "emplois_total": 18300,
+    "exploitations": 2700,
+    "exportations_pct": 90.75502172658915,
+    "ift_moyen": 4.42,
+    "pluviometrie_mm": 1993.0,
+    "temp_moyenne": 23.87,
+    "nb_cyclones": 1,
+    "aide_pac_m_eur": NaN
+  },
+  {
+    "annee": 2011,
+    "production_total": 1695500,
+    "production_sucre": 996322,
+    "production_rhum": 168576,
+    "production_bagasse": 484306,
+    "electricite_bagasse": 72646.0,
+    "surface_cultivee": 22274,
+    "rendement": 76.1,
+    "prix_tonne": 54.36,
+    "valeur_production_m_eur": 92.2,
+    "marge_estimee_m_eur": 73.2,
+    "emplois_total": 18208,
+    "exploitations": 2673,
+    "exportations_pct": 91.44928161290866,
+    "ift_moyen": 4.36,
+    "pluviometrie_mm": 2090.0,
+    "temp_moyenne": 23.83,
+    "nb_cyclones": 3,
+    "aide_pac_m_eur": NaN
+  },
+  {
+    "annee": 2012,
+    "production_total": 1708899,
+    "production_sucre": 993117,
+    "production_rhum": 146788,
+    "production_bagasse": 528679,
+    "electricite_bagasse": 79301.9,
+    "surface_cultivee": 21911,
+    "rendement": 78.0,
+    "prix_tonne": 53.72,
+    "valeur_production_m_eur": 91.8,
+    "marge_estimee_m_eur": 73.2,
+    "emplois_total": 18117,
+    "exploitations": 2646,
+    "exportations_pct": 92.8604900283818,
+    "ift_moyen": 4.27,
+    "pluviometrie_mm": 1608.0,
+    "temp_moyenne": 24.0,
+    "nb_cyclones": 3,
+    "aide_pac_m_eur": NaN
+  },
+  {
+    "annee": 2013,
+    "production_total": 1686737,
+    "production_sucre": 966367,
+    "production_rhum": 154966,
+    "production_bagasse": 505082,
+    "electricite_bagasse": 75762.4,
+    "surface_cultivee": 21520,
+    "rendement": 78.4,
+    "prix_tonne": 53.08,
+    "valeur_production_m_eur": 89.5,
+    "marge_estimee_m_eur": 71.2,
+    "emplois_total": 18025,
+    "exploitations": 2619,
+    "exportations_pct": 87.58116294939764,
+    "ift_moyen": 4.23,
+    "pluviometrie_mm": 1538.0,
+    "temp_moyenne": 23.94,
+    "nb_cyclones": 2,
+    "aide_pac_m_eur": NaN
+  },
+  {
+    "annee": 2014,
+    "production_total": 1645003,
+    "production_sucre": 951333,
+    "production_rhum": 163318,
+    "production_bagasse": 463359,
+    "electricite_bagasse": 69503.9,
+    "surface_cultivee": 21146,
+    "rendement": 77.8,
+    "prix_tonne": 52.44,
+    "valeur_production_m_eur": 86.3,
+    "marge_estimee_m_eur": 68.3,
+    "emplois_total": 17934,
+    "exploitations": 2592,
+    "exportations_pct": 92.28091663873377,
+    "ift_moyen": 4.15,
+    "pluviometrie_mm": 1571.0,
+    "temp_moyenne": 23.95,
+    "nb_cyclones": 2,
+    "aide_pac_m_eur": NaN
+  },
+  {
+    "annee": 2015,
+    "production_total": 1669196,
+    "production_sucre": 953546,
+    "production_rhum": 155343,
+    "production_bagasse": 496802,
+    "electricite_bagasse": 74520.4,
+    "surface_cultivee": 21043,
+    "rendement": 79.3,
+    "prix_tonne": 51.8,
+    "valeur_production_m_eur": 86.5,
+    "marge_estimee_m_eur": 68.6,
+    "emplois_total": 17842,
+    "exploitations": 2565,
+    "exportations_pct": 87.29616100605492,
+    "ift_moyen": 4.27,
+    "pluviometrie_mm": 2028.0,
+    "temp_moyenne": 23.79,
+    "nb_cyclones": 1,
+    "aide_pac_m_eur": NaN
+  },
+  {
+    "annee": 2016,
+    "production_total": 1605282,
+    "production_sucre": 939278,
+    "production_rhum": 138110,
+    "production_bagasse": 473355,
+    "electricite_bagasse": 71003.4,
+    "surface_cultivee": 20981,
+    "rendement": 76.5,
+    "prix_tonne": 51.18,
+    "valeur_production_m_eur": 82.2,
+    "marge_estimee_m_eur": 64.3,
+    "emplois_total": 17751,
+    "exploitations": 2538,
+    "exportations_pct": 91.11117950468177,
+    "ift_moyen": 4.23,
+    "pluviometrie_mm": 1960.0,
+    "temp_moyenne": 23.8,
+    "nb_cyclones": 1,
+    "aide_pac_m_eur": NaN
+  },
+  {
+    "annee": 2017,
+    "production_total": 1617250,
+    "production_sucre": 950362,
+    "production_rhum": 133324,
+    "production_bagasse": 467190,
+    "electricite_bagasse": 70078.6,
+    "surface_cultivee": 20512,
+    "rendement": 78.8,
+    "prix_tonne": 50.56,
+    "valeur_production_m_eur": 81.8,
+    "marge_estimee_m_eur": 64.3,
+    "emplois_total": 17659,
+    "exploitations": 2511,
+    "exportations_pct": 88.98983902092029,
+    "ift_moyen": 4.27,
+    "pluviometrie_mm": 1502.0,
+    "temp_moyenne": 23.62,
+    "nb_cyclones": 1,
+    "aide_pac_m_eur": NaN
+  },
+  {
+    "annee": 2018,
+    "production_total": 1564656,
+    "production_sucre": 914532,
+    "production_rhum": 140933,
+    "production_bagasse": 475016,
+    "electricite_bagasse": 71252.5,
+    "surface_cultivee": 20535,
+    "rendement": 76.2,
+    "prix_tonne": 49.94,
+    "valeur_production_m_eur": 78.1,
+    "marge_estimee_m_eur": 60.7,
+    "emplois_total": 17568,
+    "exploitations": 2484,
+    "exportations_pct": 89.41221188383446,
+    "ift_moyen": 4.08,
+    "pluviometrie_mm": 1666.0,
+    "temp_moyenne": 23.62,
+    "nb_cyclones": 0,
+    "aide_pac_m_eur": NaN
+  },
+  {
+    "annee": 2019,
+    "production_total": 1576303,
+    "production_sucre": 924211,
+    "production_rhum": 154922,
+    "production_bagasse": 484226,
+    "electricite_bagasse": 72633.9,
+    "surface_cultivee": 20130,
+    "rendement": 78.3,
+    "prix_tonne": 49.32,
+    "valeur_production_m_eur": 77.7,
+    "marge_estimee_m_eur": 60.6,
+    "emplois_total": 17476,
+    "exploitations": 2457,
+    "exportations_pct": 92.63070190742673,
+    "ift_moyen": 3.99,
+    "pluviometrie_mm": 2000.0,
+    "temp_moyenne": 23.82,
+    "nb_cyclones": 1,
+    "aide_pac_m_eur": NaN
+  },
+  {
+    "annee": 2020,
+    "production_total": 1544452,
+    "production_sucre": 912075,
+    "production_rhum": 147379,
+    "production_bagasse": 444801,
+    "electricite_bagasse": 66720.2,
+    "surface_cultivee": 20196,
+    "rendement": 76.5,
+    "prix_tonne": 48.7,
+    "valeur_production_m_eur": 75.2,
+    "marge_estimee_m_eur": 58.0,
+    "emplois_total": 17385,
+    "exploitations": 2430,
+    "exportations_pct": 92.28379048498023,
+    "ift_moyen": 3.87,
+    "pluviometrie_mm": 1863.0,
+    "temp_moyenne": 24.06,
+    "nb_cyclones": 2,
+    "aide_pac_m_eur": 38.6
+  },
+  {
+    "annee": 2021,
+    "production_total": 1520442,
+    "production_sucre": 874323,
+    "production_rhum": 136656,
+    "production_bagasse": 461758,
+    "electricite_bagasse": 69263.8,
+    "surface_cultivee": 19904,
+    "rendement": 76.4,
+    "prix_tonne": 50.25,
+    "valeur_production_m_eur": 76.4,
+    "marge_estimee_m_eur": 59.5,
+    "emplois_total": 17293,
+    "exploitations": 2403,
+    "exportations_pct": 88.28772805626214,
+    "ift_moyen": 3.81,
+    "pluviometrie_mm": 1428.0,
+    "temp_moyenne": 24.19,
+    "nb_cyclones": 2,
+    "aide_pac_m_eur": 39.7
+  },
+  {
+    "annee": 2022,
+    "production_total": 1436226,
+    "production_sucre": 833011,
+    "production_rhum": 140434,
+    "production_bagasse": 436672,
+    "electricite_bagasse": 65500.8,
+    "surface_cultivee": 19616,
+    "rendement": 73.2,
+    "prix_tonne": 51.8,
+    "valeur_production_m_eur": 74.4,
+    "marge_estimee_m_eur": 57.7,
+    "emplois_total": 17202,
+    "exploitations": 2376,
+    "exportations_pct": 91.26670483169644,
+    "ift_moyen": 4.03,
+    "pluviometrie_mm": 1873.0,
+    "temp_moyenne": 24.22,
+    "nb_cyclones": 0,
+    "aide_pac_m_eur": 42.6
+  },
+  {
+    "annee": 2023,
+    "production_total": 1501985,
+    "production_sucre": 881744,
+    "production_rhum": 124820,
+    "production_bagasse": 478731,
+    "electricite_bagasse": 71809.8,
+    "surface_cultivee": 19696,
+    "rendement": 76.3,
+    "prix_tonne": 52.4,
+    "valeur_production_m_eur": 78.7,
+    "marge_estimee_m_eur": 62.0,
+    "emplois_total": 17110,
+    "exploitations": 2349,
+    "exportations_pct": 92.88077975516404,
+    "ift_moyen": 3.89,
+    "pluviometrie_mm": 1654.0,
+    "temp_moyenne": 23.85,
+    "nb_cyclones": 2,
+    "aide_pac_m_eur": 45.5
+  },
+  {
+    "annee": 2024,
+    "production_total": 1137720,
+    "production_sucre": 108872,
+    "production_rhum": 102993,
+    "production_bagasse": 337752,
+    "electricite_bagasse": 50662.8,
+    "surface_cultivee": 19149,
+    "rendement": 59.4,
+    "prix_tonne": 53.1,
+    "valeur_production_m_eur": 60.4,
+    "marge_estimee_m_eur": 44.1,
+    "emplois_total": 17019,
+    "exploitations": 2322,
+    "exportations_pct": 89.35825340265987,
+    "ift_moyen": 3.79,
+    "pluviometrie_mm": 1577.0,
+    "temp_moyenne": 23.75,
+    "nb_cyclones": 1,
+    "aide_pac_m_eur": 47.1
+  }
+];
+const COMMUNES = [
+  {
+    "commune": "Saint-Louis",
+    "production": 185000,
+    "rendement": 82.5,
+    "surface": 2240,
+    "bassin": "Gol"
+  },
+  {
+    "commune": "Saint-Pierre",
+    "production": 165000,
+    "rendement": 81.2,
+    "surface": 2030,
+    "bassin": "Gol"
+  },
+  {
+    "commune": "Saint-Paul",
+    "production": 155000,
+    "rendement": 79.8,
+    "surface": 1940,
+    "bassin": "Savanna"
+  },
+  {
+    "commune": "Saint-Joseph",
+    "production": 148000,
+    "rendement": 78.5,
+    "surface": 1885,
+    "bassin": "Grand Bois"
+  },
+  {
+    "commune": "Saint-Benoît",
+    "production": 142000,
+    "rendement": 80.1,
+    "surface": 1770,
+    "bassin": "Bois Rouge"
+  },
+  {
+    "commune": "Saint-André",
+    "production": 138000,
+    "rendement": 77.8,
+    "surface": 1775,
+    "bassin": "Bois Rouge"
+  },
+  {
+    "commune": "Sainte-Suzanne",
+    "production": 135000,
+    "rendement": 76.9,
+    "surface": 1755,
+    "bassin": "Bois Rouge"
+  },
+  {
+    "commune": "Sainte-Marie",
+    "production": 128000,
+    "rendement": 75.5,
+    "surface": 1695,
+    "bassin": "Bois Rouge"
+  },
+  {
+    "commune": "Le Tampon",
+    "production": 122000,
+    "rendement": 83.2,
+    "surface": 1465,
+    "bassin": "Gol"
+  },
+  {
+    "commune": "L'Étang-Salé",
+    "production": 118000,
+    "rendement": 76.1,
+    "surface": 1550,
+    "bassin": "Gol"
+  },
+  {
+    "commune": "Les Avirons",
+    "production": 115000,
+    "rendement": 74.8,
+    "surface": 1535,
+    "bassin": "Gol"
+  },
+  {
+    "commune": "Petite-Île",
+    "production": 105000,
+    "rendement": 72.5,
+    "surface": 1450,
+    "bassin": "Grand Bois"
+  }
+];
+const METEO = [
+  {
+    "date": "2025-09-24",
+    "temperature_min": 20.3,
+    "temperature_max": 27.1,
+    "precipitations": 2.3,
+    "humidite": 88.6,
+    "vent": 11.7
+  },
+  {
+    "date": "2025-09-25",
+    "temperature_min": 21.9,
+    "temperature_max": 31.3,
+    "precipitations": 0.2,
+    "humidite": 83.3,
+    "vent": 5.7
+  },
+  {
+    "date": "2025-09-26",
+    "temperature_min": 20.4,
+    "temperature_max": 26.2,
+    "precipitations": 5.9,
+    "humidite": 74.5,
+    "vent": 8.9
+  },
+  {
+    "date": "2025-09-27",
+    "temperature_min": 20.6,
+    "temperature_max": 30.0,
+    "precipitations": 0.6,
+    "humidite": 67.4,
+    "vent": 12.2
+  },
+  {
+    "date": "2025-09-28",
+    "temperature_min": 20.8,
+    "temperature_max": 27.8,
+    "precipitations": 5.7,
+    "humidite": 88.1,
+    "vent": 17.7
+  },
+  {
+    "date": "2025-09-29",
+    "temperature_min": 22.6,
+    "temperature_max": 27.9,
+    "precipitations": 4.7,
+    "humidite": 89.2,
+    "vent": 8.0
+  },
+  {
+    "date": "2025-09-30",
+    "temperature_min": 21.1,
+    "temperature_max": 26.1,
+    "precipitations": 3.5,
+    "humidite": 85.7,
+    "vent": 12.1
+  },
+  {
+    "date": "2025-10-01",
+    "temperature_min": 23.7,
+    "temperature_max": 31.4,
+    "precipitations": 1.2,
+    "humidite": 78.3,
+    "vent": 5.7
+  },
+  {
+    "date": "2025-10-02",
+    "temperature_min": 21.2,
+    "temperature_max": 27.3,
+    "precipitations": 18.4,
+    "humidite": 66.4,
+    "vent": 22.1
+  },
+  {
+    "date": "2025-10-03",
+    "temperature_min": 21.9,
+    "temperature_max": 29.2,
+    "precipitations": 2.4,
+    "humidite": 83.7,
+    "vent": 5.7
+  },
+  {
+    "date": "2025-10-04",
+    "temperature_min": 23.5,
+    "temperature_max": 28.2,
+    "precipitations": 4.8,
+    "humidite": 74.3,
+    "vent": 8.7
+  },
+  {
+    "date": "2025-10-05",
+    "temperature_min": 20.0,
+    "temperature_max": 30.1,
+    "precipitations": 2.4,
+    "humidite": 78.2,
+    "vent": 21.9
+  },
+  {
+    "date": "2025-10-06",
+    "temperature_min": 23.3,
+    "temperature_max": 29.2,
+    "precipitations": 0.5,
+    "humidite": 81.2,
+    "vent": 20.9
+  },
+  {
+    "date": "2025-10-07",
+    "temperature_min": 22.0,
+    "temperature_max": 28.9,
+    "precipitations": 2.4,
+    "humidite": 67.3,
+    "vent": 15.8
+  },
+  {
+    "date": "2025-10-08",
+    "temperature_min": 20.9,
+    "temperature_max": 27.8,
+    "precipitations": 6.6,
+    "humidite": 87.2,
+    "vent": 12.0
+  },
+  {
+    "date": "2025-10-09",
+    "temperature_min": 21.9,
+    "temperature_max": 31.5,
+    "precipitations": 0.6,
+    "humidite": 75.0,
+    "vent": 6.7
+  },
+  {
+    "date": "2025-10-10",
+    "temperature_min": 20.5,
+    "temperature_max": 30.7,
+    "precipitations": 2.9,
+    "humidite": 71.6,
+    "vent": 17.2
+  },
+  {
+    "date": "2025-10-11",
+    "temperature_min": 18.1,
+    "temperature_max": 29.3,
+    "precipitations": 7.9,
+    "humidite": 78.5,
+    "vent": 10.5
+  },
+  {
+    "date": "2025-10-12",
+    "temperature_min": 21.1,
+    "temperature_max": 28.4,
+    "precipitations": 18.8,
+    "humidite": 67.2,
+    "vent": 14.3
+  },
+  {
+    "date": "2025-10-13",
+    "temperature_min": 19.0,
+    "temperature_max": 29.9,
+    "precipitations": 6.8,
+    "humidite": 85.0,
+    "vent": 15.9
+  },
+  {
+    "date": "2025-10-14",
+    "temperature_min": 19.0,
+    "temperature_max": 31.8,
+    "precipitations": 5.1,
+    "humidite": 78.8,
+    "vent": 22.4
+  },
+  {
+    "date": "2025-10-15",
+    "temperature_min": 18.6,
+    "temperature_max": 31.6,
+    "precipitations": 14.0,
+    "humidite": 77.2,
+    "vent": 20.8
+  },
+  {
+    "date": "2025-10-16",
+    "temperature_min": 21.6,
+    "temperature_max": 31.7,
+    "precipitations": 18.0,
+    "humidite": 69.8,
+    "vent": 7.8
+  },
+  {
+    "date": "2025-10-17",
+    "temperature_min": 18.8,
+    "temperature_max": 31.2,
+    "precipitations": 5.1,
+    "humidite": 79.9,
+    "vent": 11.3
+  },
+  {
+    "date": "2025-10-18",
+    "temperature_min": 21.4,
+    "temperature_max": 26.5,
+    "precipitations": 2.1,
+    "humidite": 81.1,
+    "vent": 10.4
+  },
+  {
+    "date": "2025-10-19",
+    "temperature_min": 23.4,
+    "temperature_max": 29.6,
+    "precipitations": 3.3,
+    "humidite": 80.7,
+    "vent": 13.1
+  },
+  {
+    "date": "2025-10-20",
+    "temperature_min": 19.8,
+    "temperature_max": 26.9,
+    "precipitations": 3.8,
+    "humidite": 83.3,
+    "vent": 17.1
+  },
+  {
+    "date": "2025-10-21",
+    "temperature_min": 18.0,
+    "temperature_max": 27.4,
+    "precipitations": 6.4,
+    "humidite": 85.0,
+    "vent": 23.9
+  },
+  {
+    "date": "2025-10-22",
+    "temperature_min": 18.7,
+    "temperature_max": 30.3,
+    "precipitations": 14.8,
+    "humidite": 78.8,
+    "vent": 8.1
+  },
+  {
+    "date": "2025-10-23",
+    "temperature_min": 22.9,
+    "temperature_max": 28.7,
+    "precipitations": 7.3,
+    "humidite": 89.3,
+    "vent": 5.5
+  },
+  {
+    "date": "2025-10-24",
+    "temperature_min": 18.4,
+    "temperature_max": 29.5,
+    "precipitations": 0.3,
+    "humidite": 73.8,
+    "vent": 21.3
+  },
+  {
+    "date": "2025-10-25",
+    "temperature_min": 19.9,
+    "temperature_max": 31.0,
+    "precipitations": 7.2,
+    "humidite": 65.1,
+    "vent": 23.0
+  },
+  {
+    "date": "2025-10-26",
+    "temperature_min": 18.5,
+    "temperature_max": 31.7,
+    "precipitations": 6.8,
+    "humidite": 80.4,
+    "vent": 20.6
+  },
+  {
+    "date": "2025-10-27",
+    "temperature_min": 21.6,
+    "temperature_max": 26.4,
+    "precipitations": 8.8,
+    "humidite": 78.4,
+    "vent": 14.2
+  },
+  {
+    "date": "2025-10-28",
+    "temperature_min": 21.3,
+    "temperature_max": 29.3,
+    "precipitations": 8.1,
+    "humidite": 87.7,
+    "vent": 23.0
+  },
+  {
+    "date": "2025-10-29",
+    "temperature_min": 21.9,
+    "temperature_max": 28.3,
+    "precipitations": 15.7,
+    "humidite": 70.0,
+    "vent": 16.1
+  },
+  {
+    "date": "2025-10-30",
+    "temperature_min": 19.1,
+    "temperature_max": 27.0,
+    "precipitations": 4.3,
+    "humidite": 80.1,
+    "vent": 12.4
+  },
+  {
+    "date": "2025-10-31",
+    "temperature_min": 19.4,
+    "temperature_max": 31.5,
+    "precipitations": 0.9,
+    "humidite": 71.3,
+    "vent": 13.5
+  },
+  {
+    "date": "2025-11-01",
+    "temperature_min": 21.1,
+    "temperature_max": 30.0,
+    "precipitations": 0.1,
+    "humidite": 69.4,
+    "vent": 17.4
+  },
+  {
+    "date": "2025-11-02",
+    "temperature_min": 19.5,
+    "temperature_max": 28.0,
+    "precipitations": 1.4,
+    "humidite": 73.9,
+    "vent": 15.1
+  },
+  {
+    "date": "2025-11-03",
+    "temperature_min": 22.6,
+    "temperature_max": 29.7,
+    "precipitations": 2.3,
+    "humidite": 84.5,
+    "vent": 7.1
+  },
+  {
+    "date": "2025-11-04",
+    "temperature_min": 20.7,
+    "temperature_max": 26.9,
+    "precipitations": 1.1,
+    "humidite": 69.2,
+    "vent": 6.9
+  },
+  {
+    "date": "2025-11-05",
+    "temperature_min": 18.4,
+    "temperature_max": 29.5,
+    "precipitations": 5.4,
+    "humidite": 79.8,
+    "vent": 12.1
+  },
+  {
+    "date": "2025-11-06",
+    "temperature_min": 22.1,
+    "temperature_max": 27.3,
+    "precipitations": 0.8,
+    "humidite": 73.8,
+    "vent": 17.6
+  },
+  {
+    "date": "2025-11-07",
+    "temperature_min": 23.5,
+    "temperature_max": 26.8,
+    "precipitations": 0.2,
+    "humidite": 82.1,
+    "vent": 13.7
+  },
+  {
+    "date": "2025-11-08",
+    "temperature_min": 23.6,
+    "temperature_max": 29.6,
+    "precipitations": 3.1,
+    "humidite": 86.0,
+    "vent": 7.7
+  },
+  {
+    "date": "2025-11-09",
+    "temperature_min": 23.9,
+    "temperature_max": 30.9,
+    "precipitations": 1.5,
+    "humidite": 82.3,
+    "vent": 19.8
+  },
+  {
+    "date": "2025-11-10",
+    "temperature_min": 18.3,
+    "temperature_max": 28.3,
+    "precipitations": 3.2,
+    "humidite": 66.1,
+    "vent": 7.2
+  },
+  {
+    "date": "2025-11-11",
+    "temperature_min": 22.0,
+    "temperature_max": 26.4,
+    "precipitations": 2.8,
+    "humidite": 85.7,
+    "vent": 20.3
+  },
+  {
+    "date": "2025-11-12",
+    "temperature_min": 21.3,
+    "temperature_max": 27.0,
+    "precipitations": 1.0,
+    "humidite": 76.4,
+    "vent": 24.4
+  },
+  {
+    "date": "2025-11-13",
+    "temperature_min": 23.3,
+    "temperature_max": 29.2,
+    "precipitations": 9.6,
+    "humidite": 67.9,
+    "vent": 5.9
+  },
+  {
+    "date": "2025-11-14",
+    "temperature_min": 19.9,
+    "temperature_max": 26.2,
+    "precipitations": 0.4,
+    "humidite": 66.7,
+    "vent": 24.9
+  },
+  {
+    "date": "2025-11-15",
+    "temperature_min": 18.8,
+    "temperature_max": 31.7,
+    "precipitations": 1.3,
+    "humidite": 73.1,
+    "vent": 19.6
+  },
+  {
+    "date": "2025-11-16",
+    "temperature_min": 19.2,
+    "temperature_max": 28.3,
+    "precipitations": 7.4,
+    "humidite": 66.6,
+    "vent": 10.3
+  },
+  {
+    "date": "2025-11-17",
+    "temperature_min": 20.5,
+    "temperature_max": 26.5,
+    "precipitations": 20.6,
+    "humidite": 77.1,
+    "vent": 16.2
+  },
+  {
+    "date": "2025-11-18",
+    "temperature_min": 20.7,
+    "temperature_max": 31.5,
+    "precipitations": 1.8,
+    "humidite": 76.4,
+    "vent": 18.2
+  },
+  {
+    "date": "2025-11-19",
+    "temperature_min": 18.4,
+    "temperature_max": 31.0,
+    "precipitations": 12.7,
+    "humidite": 71.9,
+    "vent": 22.3
+  },
+  {
+    "date": "2025-11-20",
+    "temperature_min": 22.2,
+    "temperature_max": 31.3,
+    "precipitations": 4.3,
+    "humidite": 86.2,
+    "vent": 9.1
+  },
+  {
+    "date": "2025-11-21",
+    "temperature_min": 21.0,
+    "temperature_max": 29.9,
+    "precipitations": 5.5,
+    "humidite": 85.6,
+    "vent": 11.7
+  },
+  {
+    "date": "2025-11-22",
+    "temperature_min": 21.8,
+    "temperature_max": 26.9,
+    "precipitations": 3.5,
+    "humidite": 87.8,
+    "vent": 11.8
+  },
+  {
+    "date": "2025-11-23",
+    "temperature_min": 23.3,
+    "temperature_max": 30.2,
+    "precipitations": 0.8,
+    "humidite": 69.7,
+    "vent": 5.5
+  },
+  {
+    "date": "2025-11-24",
+    "temperature_min": 22.7,
+    "temperature_max": 31.4,
+    "precipitations": 6.3,
+    "humidite": 89.2,
+    "vent": 17.1
+  },
+  {
+    "date": "2025-11-25",
+    "temperature_min": 18.7,
+    "temperature_max": 27.6,
+    "precipitations": 0.2,
+    "humidite": 90.0,
+    "vent": 9.5
+  },
+  {
+    "date": "2025-11-26",
+    "temperature_min": 21.4,
+    "temperature_max": 27.0,
+    "precipitations": 7.0,
+    "humidite": 78.3,
+    "vent": 10.9
+  },
+  {
+    "date": "2025-11-27",
+    "temperature_min": 19.9,
+    "temperature_max": 29.8,
+    "precipitations": 2.3,
+    "humidite": 67.9,
+    "vent": 9.0
+  },
+  {
+    "date": "2025-11-28",
+    "temperature_min": 23.8,
+    "temperature_max": 29.0,
+    "precipitations": 2.5,
+    "humidite": 88.5,
+    "vent": 12.6
+  },
+  {
+    "date": "2025-11-29",
+    "temperature_min": 19.9,
+    "temperature_max": 29.2,
+    "precipitations": 5.3,
+    "humidite": 78.7,
+    "vent": 11.1
+  },
+  {
+    "date": "2025-11-30",
+    "temperature_min": 18.8,
+    "temperature_max": 28.2,
+    "precipitations": 2.8,
+    "humidite": 82.8,
+    "vent": 6.4
+  },
+  {
+    "date": "2025-12-01",
+    "temperature_min": 22.5,
+    "temperature_max": 29.4,
+    "precipitations": 4.5,
+    "humidite": 79.9,
+    "vent": 10.5
+  },
+  {
+    "date": "2025-12-02",
+    "temperature_min": 22.5,
+    "temperature_max": 27.0,
+    "precipitations": 6.9,
+    "humidite": 75.5,
+    "vent": 23.3
+  },
+  {
+    "date": "2025-12-03",
+    "temperature_min": 18.4,
+    "temperature_max": 31.0,
+    "precipitations": 2.7,
+    "humidite": 75.2,
+    "vent": 9.5
+  },
+  {
+    "date": "2025-12-04",
+    "temperature_min": 20.6,
+    "temperature_max": 27.8,
+    "precipitations": 0.5,
+    "humidite": 81.2,
+    "vent": 5.2
+  },
+  {
+    "date": "2025-12-05",
+    "temperature_min": 18.8,
+    "temperature_max": 28.7,
+    "precipitations": 36.4,
+    "humidite": 71.9,
+    "vent": 7.8
+  },
+  {
+    "date": "2025-12-06",
+    "temperature_min": 22.5,
+    "temperature_max": 31.1,
+    "precipitations": 3.8,
+    "humidite": 82.2,
+    "vent": 22.0
+  },
+  {
+    "date": "2025-12-07",
+    "temperature_min": 20.4,
+    "temperature_max": 31.7,
+    "precipitations": 0.3,
+    "humidite": 72.4,
+    "vent": 20.1
+  },
+  {
+    "date": "2025-12-08",
+    "temperature_min": 19.6,
+    "temperature_max": 28.4,
+    "precipitations": 0.1,
+    "humidite": 83.4,
+    "vent": 8.4
+  },
+  {
+    "date": "2025-12-09",
+    "temperature_min": 21.8,
+    "temperature_max": 29.9,
+    "precipitations": 2.1,
+    "humidite": 76.7,
+    "vent": 20.0
+  },
+  {
+    "date": "2025-12-10",
+    "temperature_min": 22.1,
+    "temperature_max": 30.9,
+    "precipitations": 16.1,
+    "humidite": 68.4,
+    "vent": 22.0
+  },
+  {
+    "date": "2025-12-11",
+    "temperature_min": 22.2,
+    "temperature_max": 30.9,
+    "precipitations": 10.0,
+    "humidite": 84.1,
+    "vent": 5.8
+  },
+  {
+    "date": "2025-12-12",
+    "temperature_min": 21.2,
+    "temperature_max": 30.8,
+    "precipitations": 0.6,
+    "humidite": 76.3,
+    "vent": 15.8
+  },
+  {
+    "date": "2025-12-13",
+    "temperature_min": 22.0,
+    "temperature_max": 27.8,
+    "precipitations": 1.2,
+    "humidite": 81.7,
+    "vent": 18.1
+  },
+  {
+    "date": "2025-12-14",
+    "temperature_min": 19.4,
+    "temperature_max": 30.6,
+    "precipitations": 1.2,
+    "humidite": 88.2,
+    "vent": 6.0
+  },
+  {
+    "date": "2025-12-15",
+    "temperature_min": 23.1,
+    "temperature_max": 28.3,
+    "precipitations": 0.1,
+    "humidite": 84.2,
+    "vent": 14.3
+  },
+  {
+    "date": "2025-12-16",
+    "temperature_min": 19.2,
+    "temperature_max": 27.0,
+    "precipitations": 10.5,
+    "humidite": 87.9,
+    "vent": 23.1
+  },
+  {
+    "date": "2025-12-17",
+    "temperature_min": 22.5,
+    "temperature_max": 28.3,
+    "precipitations": 7.6,
+    "humidite": 71.4,
+    "vent": 12.4
+  },
+  {
+    "date": "2025-12-18",
+    "temperature_min": 20.3,
+    "temperature_max": 30.8,
+    "precipitations": 10.5,
+    "humidite": 85.1,
+    "vent": 22.5
+  },
+  {
+    "date": "2025-12-19",
+    "temperature_min": 19.1,
+    "temperature_max": 27.6,
+    "precipitations": 4.1,
+    "humidite": 78.4,
+    "vent": 22.2
+  },
+  {
+    "date": "2025-12-20",
+    "temperature_min": 22.7,
+    "temperature_max": 26.2,
+    "precipitations": 0.2,
+    "humidite": 86.7,
+    "vent": 9.4
+  },
+  {
+    "date": "2025-12-21",
+    "temperature_min": 22.1,
+    "temperature_max": 29.2,
+    "precipitations": 5.2,
+    "humidite": 86.8,
+    "vent": 17.0
+  },
+  {
+    "date": "2025-12-22",
+    "temperature_min": 20.2,
+    "temperature_max": 31.0,
+    "precipitations": 2.1,
+    "humidite": 70.2,
+    "vent": 13.3
+  },
+  {
+    "date": "2025-12-23",
+    "temperature_min": 18.2,
+    "temperature_max": 31.6,
+    "precipitations": 0.6,
+    "humidite": 82.8,
+    "vent": 12.9
+  },
+  {
+    "date": "2025-12-24",
+    "temperature_min": 21.3,
+    "temperature_max": 31.4,
+    "precipitations": 4.1,
+    "humidite": 74.3,
+    "vent": 16.6
+  },
+  {
+    "date": "2025-12-25",
+    "temperature_min": 20.4,
+    "temperature_max": 30.5,
+    "precipitations": 4.4,
+    "humidite": 66.7,
+    "vent": 17.6
+  },
+  {
+    "date": "2025-12-26",
+    "temperature_min": 21.6,
+    "temperature_max": 30.2,
+    "precipitations": 7.3,
+    "humidite": 84.2,
+    "vent": 23.7
+  },
+  {
+    "date": "2025-12-27",
+    "temperature_min": 18.2,
+    "temperature_max": 32.0,
+    "precipitations": 6.8,
+    "humidite": 67.0,
+    "vent": 24.3
+  },
+  {
+    "date": "2025-12-28",
+    "temperature_min": 22.2,
+    "temperature_max": 29.3,
+    "precipitations": 0.4,
+    "humidite": 78.7,
+    "vent": 24.9
+  },
+  {
+    "date": "2025-12-29",
+    "temperature_min": 21.0,
+    "temperature_max": 26.5,
+    "precipitations": 12.0,
+    "humidite": 78.3,
+    "vent": 11.7
+  },
+  {
+    "date": "2025-12-30",
+    "temperature_min": 20.4,
+    "temperature_max": 29.8,
+    "precipitations": 0.1,
+    "humidite": 65.4,
+    "vent": 10.9
+  },
+  {
+    "date": "2025-12-31",
+    "temperature_min": 21.6,
+    "temperature_max": 30.7,
+    "precipitations": 1.4,
+    "humidite": 72.3,
+    "vent": 12.4
+  },
+  {
+    "date": "2026-01-01",
+    "temperature_min": 23.6,
+    "temperature_max": 28.7,
+    "precipitations": 4.8,
+    "humidite": 75.5,
+    "vent": 21.3
+  },
+  {
+    "date": "2026-01-02",
+    "temperature_min": 21.0,
+    "temperature_max": 31.9,
+    "precipitations": 8.0,
+    "humidite": 87.2,
+    "vent": 15.2
+  },
+  {
+    "date": "2026-01-03",
+    "temperature_min": 23.6,
+    "temperature_max": 29.1,
+    "precipitations": 1.0,
+    "humidite": 75.1,
+    "vent": 19.8
+  },
+  {
+    "date": "2026-01-04",
+    "temperature_min": 19.2,
+    "temperature_max": 28.1,
+    "precipitations": 4.6,
+    "humidite": 74.7,
+    "vent": 6.8
+  },
+  {
+    "date": "2026-01-05",
+    "temperature_min": 19.1,
+    "temperature_max": 28.9,
+    "precipitations": 8.0,
+    "humidite": 68.3,
+    "vent": 6.5
+  },
+  {
+    "date": "2026-01-06",
+    "temperature_min": 18.5,
+    "temperature_max": 27.9,
+    "precipitations": 3.6,
+    "humidite": 67.9,
+    "vent": 10.3
+  },
+  {
+    "date": "2026-01-07",
+    "temperature_min": 21.7,
+    "temperature_max": 26.7,
+    "precipitations": 2.8,
+    "humidite": 71.8,
+    "vent": 5.1
+  },
+  {
+    "date": "2026-01-08",
+    "temperature_min": 20.3,
+    "temperature_max": 31.9,
+    "precipitations": 7.2,
+    "humidite": 84.6,
+    "vent": 12.8
+  },
+  {
+    "date": "2026-01-09",
+    "temperature_min": 23.3,
+    "temperature_max": 30.9,
+    "precipitations": 9.2,
+    "humidite": 72.3,
+    "vent": 21.7
+  },
+  {
+    "date": "2026-01-10",
+    "temperature_min": 18.1,
+    "temperature_max": 27.9,
+    "precipitations": 3.7,
+    "humidite": 80.5,
+    "vent": 21.3
+  },
+  {
+    "date": "2026-01-11",
+    "temperature_min": 23.9,
+    "temperature_max": 31.5,
+    "precipitations": 2.6,
+    "humidite": 73.7,
+    "vent": 16.3
+  },
+  {
+    "date": "2026-01-12",
+    "temperature_min": 21.0,
+    "temperature_max": 27.9,
+    "precipitations": 4.0,
+    "humidite": 78.3,
+    "vent": 13.4
+  },
+  {
+    "date": "2026-01-13",
+    "temperature_min": 21.7,
+    "temperature_max": 29.8,
+    "precipitations": 1.2,
+    "humidite": 87.2,
+    "vent": 19.4
+  },
+  {
+    "date": "2026-01-14",
+    "temperature_min": 21.5,
+    "temperature_max": 26.2,
+    "precipitations": 12.3,
+    "humidite": 72.6,
+    "vent": 23.4
+  },
+  {
+    "date": "2026-01-15",
+    "temperature_min": 21.2,
+    "temperature_max": 26.9,
+    "precipitations": 4.5,
+    "humidite": 89.2,
+    "vent": 19.7
+  },
+  {
+    "date": "2026-01-16",
+    "temperature_min": 21.2,
+    "temperature_max": 26.9,
+    "precipitations": 3.2,
+    "humidite": 82.0,
+    "vent": 6.9
+  },
+  {
+    "date": "2026-01-17",
+    "temperature_min": 18.5,
+    "temperature_max": 31.9,
+    "precipitations": 3.0,
+    "humidite": 67.7,
+    "vent": 20.3
+  },
+  {
+    "date": "2026-01-18",
+    "temperature_min": 18.7,
+    "temperature_max": 30.1,
+    "precipitations": 5.3,
+    "humidite": 75.1,
+    "vent": 17.8
+  },
+  {
+    "date": "2026-01-19",
+    "temperature_min": 21.0,
+    "temperature_max": 27.5,
+    "precipitations": 0.9,
+    "humidite": 68.5,
+    "vent": 19.2
+  },
+  {
+    "date": "2026-01-20",
+    "temperature_min": 18.6,
+    "temperature_max": 29.8,
+    "precipitations": 9.3,
+    "humidite": 86.2,
+    "vent": 16.0
+  },
+  {
+    "date": "2026-01-21",
+    "temperature_min": 21.6,
+    "temperature_max": 28.4,
+    "precipitations": 1.7,
+    "humidite": 77.3,
+    "vent": 5.5
+  },
+  {
+    "date": "2026-01-22",
+    "temperature_min": 21.6,
+    "temperature_max": 30.6,
+    "precipitations": 0.3,
+    "humidite": 76.0,
+    "vent": 10.4
+  },
+  {
+    "date": "2026-01-23",
+    "temperature_min": 19.6,
+    "temperature_max": 30.0,
+    "precipitations": 1.1,
+    "humidite": 83.4,
+    "vent": 7.9
+  },
+  {
+    "date": "2026-01-24",
+    "temperature_min": 22.0,
+    "temperature_max": 28.4,
+    "precipitations": 1.7,
+    "humidite": 82.2,
+    "vent": 8.0
+  },
+  {
+    "date": "2026-01-25",
+    "temperature_min": 19.5,
+    "temperature_max": 27.3,
+    "precipitations": 20.9,
+    "humidite": 75.2,
+    "vent": 19.9
+  },
+  {
+    "date": "2026-01-26",
+    "temperature_min": 20.5,
+    "temperature_max": 26.1,
+    "precipitations": 4.6,
+    "humidite": 68.9,
+    "vent": 19.2
+  },
+  {
+    "date": "2026-01-27",
+    "temperature_min": 18.3,
+    "temperature_max": 29.5,
+    "precipitations": 0.1,
+    "humidite": 80.9,
+    "vent": 7.6
+  },
+  {
+    "date": "2026-01-28",
+    "temperature_min": 24.0,
+    "temperature_max": 31.6,
+    "precipitations": 2.7,
+    "humidite": 89.3,
+    "vent": 17.9
+  },
+  {
+    "date": "2026-01-29",
+    "temperature_min": 22.4,
+    "temperature_max": 28.2,
+    "precipitations": 6.5,
+    "humidite": 81.0,
+    "vent": 11.7
+  },
+  {
+    "date": "2026-01-30",
+    "temperature_min": 20.1,
+    "temperature_max": 31.2,
+    "precipitations": 2.3,
+    "humidite": 73.5,
+    "vent": 5.8
+  },
+  {
+    "date": "2026-01-31",
+    "temperature_min": 19.5,
+    "temperature_max": 27.1,
+    "precipitations": 9.0,
+    "humidite": 77.4,
+    "vent": 13.9
+  },
+  {
+    "date": "2026-02-01",
+    "temperature_min": 19.2,
+    "temperature_max": 31.0,
+    "precipitations": 9.8,
+    "humidite": 78.7,
+    "vent": 21.7
+  },
+  {
+    "date": "2026-02-02",
+    "temperature_min": 19.8,
+    "temperature_max": 30.1,
+    "precipitations": 4.6,
+    "humidite": 86.8,
+    "vent": 23.0
+  },
+  {
+    "date": "2026-02-03",
+    "temperature_min": 18.1,
+    "temperature_max": 27.4,
+    "precipitations": 0.8,
+    "humidite": 77.9,
+    "vent": 22.6
+  },
+  {
+    "date": "2026-02-04",
+    "temperature_min": 20.0,
+    "temperature_max": 31.8,
+    "precipitations": 0.9,
+    "humidite": 69.7,
+    "vent": 7.4
+  },
+  {
+    "date": "2026-02-05",
+    "temperature_min": 18.3,
+    "temperature_max": 31.2,
+    "precipitations": 20.1,
+    "humidite": 83.0,
+    "vent": 10.2
+  },
+  {
+    "date": "2026-02-06",
+    "temperature_min": 21.1,
+    "temperature_max": 27.3,
+    "precipitations": 0.4,
+    "humidite": 77.5,
+    "vent": 7.7
+  },
+  {
+    "date": "2026-02-07",
+    "temperature_min": 23.5,
+    "temperature_max": 28.0,
+    "precipitations": 7.7,
+    "humidite": 82.6,
+    "vent": 16.4
+  },
+  {
+    "date": "2026-02-08",
+    "temperature_min": 21.0,
+    "temperature_max": 31.6,
+    "precipitations": 0.6,
+    "humidite": 75.6,
+    "vent": 14.8
+  },
+  {
+    "date": "2026-02-09",
+    "temperature_min": 19.1,
+    "temperature_max": 27.9,
+    "precipitations": 20.3,
+    "humidite": 69.4,
+    "vent": 21.6
+  },
+  {
+    "date": "2026-02-10",
+    "temperature_min": 20.8,
+    "temperature_max": 29.8,
+    "precipitations": 8.9,
+    "humidite": 87.6,
+    "vent": 14.5
+  },
+  {
+    "date": "2026-02-11",
+    "temperature_min": 20.0,
+    "temperature_max": 29.2,
+    "precipitations": 3.8,
+    "humidite": 80.0,
+    "vent": 24.8
+  },
+  {
+    "date": "2026-02-12",
+    "temperature_min": 23.9,
+    "temperature_max": 31.8,
+    "precipitations": 1.2,
+    "humidite": 86.9,
+    "vent": 19.0
+  },
+  {
+    "date": "2026-02-13",
+    "temperature_min": 19.3,
+    "temperature_max": 27.4,
+    "precipitations": 4.0,
+    "humidite": 66.2,
+    "vent": 22.4
+  },
+  {
+    "date": "2026-02-14",
+    "temperature_min": 22.3,
+    "temperature_max": 30.8,
+    "precipitations": 6.0,
+    "humidite": 85.1,
+    "vent": 23.2
+  },
+  {
+    "date": "2026-02-15",
+    "temperature_min": 19.1,
+    "temperature_max": 30.9,
+    "precipitations": 6.7,
+    "humidite": 87.3,
+    "vent": 25.0
+  },
+  {
+    "date": "2026-02-16",
+    "temperature_min": 20.4,
+    "temperature_max": 30.8,
+    "precipitations": 12.5,
+    "humidite": 69.4,
+    "vent": 20.2
+  },
+  {
+    "date": "2026-02-17",
+    "temperature_min": 22.9,
+    "temperature_max": 29.7,
+    "precipitations": 9.4,
+    "humidite": 70.1,
+    "vent": 12.7
+  },
+  {
+    "date": "2026-02-18",
+    "temperature_min": 20.2,
+    "temperature_max": 30.3,
+    "precipitations": 2.2,
+    "humidite": 74.2,
+    "vent": 21.9
+  },
+  {
+    "date": "2026-02-19",
+    "temperature_min": 22.8,
+    "temperature_max": 30.6,
+    "precipitations": 4.6,
+    "humidite": 83.6,
+    "vent": 15.8
+  },
+  {
+    "date": "2026-02-20",
+    "temperature_min": 18.3,
+    "temperature_max": 26.3,
+    "precipitations": 1.1,
+    "humidite": 70.4,
+    "vent": 19.2
+  },
+  {
+    "date": "2026-02-21",
+    "temperature_min": 23.6,
+    "temperature_max": 30.1,
+    "precipitations": 8.8,
+    "humidite": 75.7,
+    "vent": 14.5
+  },
+  {
+    "date": "2026-02-22",
+    "temperature_min": 20.2,
+    "temperature_max": 29.6,
+    "precipitations": 12.0,
+    "humidite": 76.6,
+    "vent": 16.0
+  },
+  {
+    "date": "2026-02-23",
+    "temperature_min": 23.6,
+    "temperature_max": 27.0,
+    "precipitations": 1.0,
+    "humidite": 84.6,
+    "vent": 15.8
+  },
+  {
+    "date": "2026-02-24",
+    "temperature_min": 18.5,
+    "temperature_max": 26.1,
+    "precipitations": 4.4,
+    "humidite": 80.4,
+    "vent": 13.8
+  },
+  {
+    "date": "2026-02-25",
+    "temperature_min": 18.9,
+    "temperature_max": 29.6,
+    "precipitations": 6.0,
+    "humidite": 73.6,
+    "vent": 22.8
+  },
+  {
+    "date": "2026-02-26",
+    "temperature_min": 20.5,
+    "temperature_max": 29.7,
+    "precipitations": 4.4,
+    "humidite": 81.0,
+    "vent": 15.3
+  },
+  {
+    "date": "2026-02-27",
+    "temperature_min": 21.1,
+    "temperature_max": 26.5,
+    "precipitations": 5.4,
+    "humidite": 89.8,
+    "vent": 7.2
+  },
+  {
+    "date": "2026-02-28",
+    "temperature_min": 18.6,
+    "temperature_max": 31.9,
+    "precipitations": 9.9,
+    "humidite": 72.7,
+    "vent": 6.7
+  },
+  {
+    "date": "2026-03-01",
+    "temperature_min": 20.9,
+    "temperature_max": 30.3,
+    "precipitations": 0.3,
+    "humidite": 65.9,
+    "vent": 6.4
+  },
+  {
+    "date": "2026-03-02",
+    "temperature_min": 22.0,
+    "temperature_max": 30.6,
+    "precipitations": 2.0,
+    "humidite": 71.1,
+    "vent": 18.2
+  },
+  {
+    "date": "2026-03-03",
+    "temperature_min": 21.4,
+    "temperature_max": 27.6,
+    "precipitations": 6.5,
+    "humidite": 79.5,
+    "vent": 5.0
+  },
+  {
+    "date": "2026-03-04",
+    "temperature_min": 20.9,
+    "temperature_max": 26.7,
+    "precipitations": 11.1,
+    "humidite": 86.5,
+    "vent": 23.3
+  },
+  {
+    "date": "2026-03-05",
+    "temperature_min": 21.5,
+    "temperature_max": 30.1,
+    "precipitations": 9.7,
+    "humidite": 83.1,
+    "vent": 21.4
+  },
+  {
+    "date": "2026-03-06",
+    "temperature_min": 22.7,
+    "temperature_max": 26.5,
+    "precipitations": 3.5,
+    "humidite": 86.3,
+    "vent": 16.2
+  },
+  {
+    "date": "2026-03-07",
+    "temperature_min": 20.0,
+    "temperature_max": 27.6,
+    "precipitations": 5.5,
+    "humidite": 72.6,
+    "vent": 6.0
+  },
+  {
+    "date": "2026-03-08",
+    "temperature_min": 20.3,
+    "temperature_max": 26.1,
+    "precipitations": 0.4,
+    "humidite": 73.3,
+    "vent": 12.9
+  },
+  {
+    "date": "2026-03-09",
+    "temperature_min": 19.5,
+    "temperature_max": 30.3,
+    "precipitations": 1.6,
+    "humidite": 80.3,
+    "vent": 7.3
+  },
+  {
+    "date": "2026-03-10",
+    "temperature_min": 21.9,
+    "temperature_max": 30.1,
+    "precipitations": 2.8,
+    "humidite": 77.8,
+    "vent": 21.3
+  },
+  {
+    "date": "2026-03-11",
+    "temperature_min": 22.2,
+    "temperature_max": 29.8,
+    "precipitations": 1.1,
+    "humidite": 75.7,
+    "vent": 9.5
+  },
+  {
+    "date": "2026-03-12",
+    "temperature_min": 19.2,
+    "temperature_max": 28.8,
+    "precipitations": 11.9,
+    "humidite": 79.3,
+    "vent": 14.4
+  },
+  {
+    "date": "2026-03-13",
+    "temperature_min": 20.9,
+    "temperature_max": 27.5,
+    "precipitations": 3.2,
+    "humidite": 72.4,
+    "vent": 17.5
+  },
+  {
+    "date": "2026-03-14",
+    "temperature_min": 22.9,
+    "temperature_max": 31.3,
+    "precipitations": 6.7,
+    "humidite": 77.9,
+    "vent": 10.8
+  },
+  {
+    "date": "2026-03-15",
+    "temperature_min": 23.5,
+    "temperature_max": 30.0,
+    "precipitations": 2.1,
+    "humidite": 87.5,
+    "vent": 12.5
+  },
+  {
+    "date": "2026-03-16",
+    "temperature_min": 19.1,
+    "temperature_max": 26.5,
+    "precipitations": 4.9,
+    "humidite": 85.9,
+    "vent": 23.1
+  },
+  {
+    "date": "2026-03-17",
+    "temperature_min": 22.2,
+    "temperature_max": 29.1,
+    "precipitations": 0.8,
+    "humidite": 89.2,
+    "vent": 5.9
+  },
+  {
+    "date": "2026-03-18",
+    "temperature_min": 23.8,
+    "temperature_max": 29.2,
+    "precipitations": 4.9,
+    "humidite": 84.3,
+    "vent": 18.6
+  },
+  {
+    "date": "2026-03-19",
+    "temperature_min": 19.7,
+    "temperature_max": 26.2,
+    "precipitations": 16.8,
+    "humidite": 68.4,
+    "vent": 23.6
+  },
+  {
+    "date": "2026-03-20",
+    "temperature_min": 21.2,
+    "temperature_max": 26.5,
+    "precipitations": 13.8,
+    "humidite": 66.9,
+    "vent": 16.0
+  },
+  {
+    "date": "2026-03-21",
+    "temperature_min": 21.9,
+    "temperature_max": 29.5,
+    "precipitations": 3.2,
+    "humidite": 74.7,
+    "vent": 18.6
+  },
+  {
+    "date": "2026-03-22",
+    "temperature_min": 18.3,
+    "temperature_max": 27.7,
+    "precipitations": 3.3,
+    "humidite": 77.9,
+    "vent": 5.2
+  },
+  {
+    "date": "2026-03-23",
+    "temperature_min": 18.3,
+    "temperature_max": 28.5,
+    "precipitations": 0.9,
+    "humidite": 69.8,
+    "vent": 16.1
+  },
+  {
+    "date": "2026-03-24",
+    "temperature_min": 20.9,
+    "temperature_max": 27.2,
+    "precipitations": 6.1,
+    "humidite": 69.4,
+    "vent": 8.7
+  },
+  {
+    "date": "2026-03-25",
+    "temperature_min": 21.3,
+    "temperature_max": 26.0,
+    "precipitations": 7.6,
+    "humidite": 67.3,
+    "vent": 11.4
+  },
+  {
+    "date": "2026-03-26",
+    "temperature_min": 22.4,
+    "temperature_max": 30.4,
+    "precipitations": 0.9,
+    "humidite": 77.2,
+    "vent": 12.3
+  },
+  {
+    "date": "2026-03-27",
+    "temperature_min": 18.8,
+    "temperature_max": 29.2,
+    "precipitations": 7.7,
+    "humidite": 74.3,
+    "vent": 18.6
+  },
+  {
+    "date": "2026-03-28",
+    "temperature_min": 22.6,
+    "temperature_max": 30.2,
+    "precipitations": 9.1,
+    "humidite": 78.6,
+    "vent": 5.8
+  },
+  {
+    "date": "2026-03-29",
+    "temperature_min": 23.0,
+    "temperature_max": 30.1,
+    "precipitations": 0.3,
+    "humidite": 72.7,
+    "vent": 9.8
+  },
+  {
+    "date": "2026-03-30",
+    "temperature_min": 21.3,
+    "temperature_max": 28.6,
+    "precipitations": 3.6,
+    "humidite": 80.5,
+    "vent": 24.8
+  },
+  {
+    "date": "2026-03-31",
+    "temperature_min": 23.2,
+    "temperature_max": 29.4,
+    "precipitations": 6.0,
+    "humidite": 65.2,
+    "vent": 9.2
+  },
+  {
+    "date": "2026-04-01",
+    "temperature_min": 20.8,
+    "temperature_max": 29.4,
+    "precipitations": 2.4,
+    "humidite": 66.7,
+    "vent": 14.8
+  },
+  {
+    "date": "2026-04-02",
+    "temperature_min": 20.8,
+    "temperature_max": 28.5,
+    "precipitations": 13.5,
+    "humidite": 67.4,
+    "vent": 14.3
+  },
+  {
+    "date": "2026-04-03",
+    "temperature_min": 21.0,
+    "temperature_max": 26.4,
+    "precipitations": 7.9,
+    "humidite": 80.6,
+    "vent": 7.8
+  },
+  {
+    "date": "2026-04-04",
+    "temperature_min": 20.7,
+    "temperature_max": 27.3,
+    "precipitations": 0.3,
+    "humidite": 65.3,
+    "vent": 9.7
+  },
+  {
+    "date": "2026-04-05",
+    "temperature_min": 21.2,
+    "temperature_max": 26.8,
+    "precipitations": 2.6,
+    "humidite": 76.1,
+    "vent": 17.2
+  },
+  {
+    "date": "2026-04-06",
+    "temperature_min": 18.9,
+    "temperature_max": 29.0,
+    "precipitations": 2.7,
+    "humidite": 71.4,
+    "vent": 11.1
+  },
+  {
+    "date": "2026-04-07",
+    "temperature_min": 20.6,
+    "temperature_max": 27.6,
+    "precipitations": 6.5,
+    "humidite": 76.5,
+    "vent": 23.6
+  },
+  {
+    "date": "2026-04-08",
+    "temperature_min": 18.6,
+    "temperature_max": 27.0,
+    "precipitations": 6.4,
+    "humidite": 88.3,
+    "vent": 9.2
+  },
+  {
+    "date": "2026-04-09",
+    "temperature_min": 23.8,
+    "temperature_max": 27.2,
+    "precipitations": 2.9,
+    "humidite": 69.4,
+    "vent": 10.0
+  },
+  {
+    "date": "2026-04-10",
+    "temperature_min": 19.5,
+    "temperature_max": 28.3,
+    "precipitations": 2.6,
+    "humidite": 89.3,
+    "vent": 13.2
+  },
+  {
+    "date": "2026-04-11",
+    "temperature_min": 18.2,
+    "temperature_max": 28.2,
+    "precipitations": 2.5,
+    "humidite": 66.6,
+    "vent": 13.3
+  },
+  {
+    "date": "2026-04-12",
+    "temperature_min": 23.0,
+    "temperature_max": 27.6,
+    "precipitations": 0.1,
+    "humidite": 77.7,
+    "vent": 16.9
+  },
+  {
+    "date": "2026-04-13",
+    "temperature_min": 22.6,
+    "temperature_max": 27.1,
+    "precipitations": 6.2,
+    "humidite": 80.4,
+    "vent": 7.8
+  },
+  {
+    "date": "2026-04-14",
+    "temperature_min": 22.3,
+    "temperature_max": 29.3,
+    "precipitations": 3.7,
+    "humidite": 79.5,
+    "vent": 13.3
+  },
+  {
+    "date": "2026-04-15",
+    "temperature_min": 22.5,
+    "temperature_max": 31.8,
+    "precipitations": 1.9,
+    "humidite": 68.0,
+    "vent": 14.4
+  },
+  {
+    "date": "2026-04-16",
+    "temperature_min": 18.5,
+    "temperature_max": 26.2,
+    "precipitations": 8.2,
+    "humidite": 78.7,
+    "vent": 17.4
+  },
+  {
+    "date": "2026-04-17",
+    "temperature_min": 18.8,
+    "temperature_max": 26.2,
+    "precipitations": 3.0,
+    "humidite": 84.7,
+    "vent": 11.8
+  },
+  {
+    "date": "2026-04-18",
+    "temperature_min": 22.8,
+    "temperature_max": 28.0,
+    "precipitations": 4.2,
+    "humidite": 81.2,
+    "vent": 23.7
+  },
+  {
+    "date": "2026-04-19",
+    "temperature_min": 23.8,
+    "temperature_max": 31.4,
+    "precipitations": 9.3,
+    "humidite": 70.9,
+    "vent": 17.5
+  },
+  {
+    "date": "2026-04-20",
+    "temperature_min": 20.2,
+    "temperature_max": 28.4,
+    "precipitations": 9.9,
+    "humidite": 69.4,
+    "vent": 6.3
+  },
+  {
+    "date": "2026-04-21",
+    "temperature_min": 19.2,
+    "temperature_max": 30.6,
+    "precipitations": 1.0,
+    "humidite": 89.8,
+    "vent": 13.3
+  },
+  {
+    "date": "2026-04-22",
+    "temperature_min": 22.8,
+    "temperature_max": 26.2,
+    "precipitations": 14.6,
+    "humidite": 81.6,
+    "vent": 18.9
+  },
+  {
+    "date": "2026-04-23",
+    "temperature_min": 22.8,
+    "temperature_max": 26.3,
+    "precipitations": 1.9,
+    "humidite": 77.6,
+    "vent": 11.4
+  },
+  {
+    "date": "2026-04-24",
+    "temperature_min": 21.4,
+    "temperature_max": 29.8,
+    "precipitations": 0.6,
+    "humidite": 74.2,
+    "vent": 14.2
+  },
+  {
+    "date": "2026-04-25",
+    "temperature_min": 22.7,
+    "temperature_max": 26.2,
+    "precipitations": 8.2,
+    "humidite": 68.1,
+    "vent": 14.8
+  },
+  {
+    "date": "2026-04-26",
+    "temperature_min": 22.3,
+    "temperature_max": 31.5,
+    "precipitations": 5.6,
+    "humidite": 85.3,
+    "vent": 19.9
+  },
+  {
+    "date": "2026-04-27",
+    "temperature_min": 22.8,
+    "temperature_max": 28.6,
+    "precipitations": 4.4,
+    "humidite": 85.1,
+    "vent": 15.6
+  },
+  {
+    "date": "2026-04-28",
+    "temperature_min": 21.8,
+    "temperature_max": 27.6,
+    "precipitations": 2.6,
+    "humidite": 86.3,
+    "vent": 13.0
+  },
+  {
+    "date": "2026-04-29",
+    "temperature_min": 23.2,
+    "temperature_max": 29.4,
+    "precipitations": 0.2,
+    "humidite": 69.3,
+    "vent": 13.5
+  },
+  {
+    "date": "2026-04-30",
+    "temperature_min": 18.4,
+    "temperature_max": 27.1,
+    "precipitations": 1.0,
+    "humidite": 77.3,
+    "vent": 22.0
+  },
+  {
+    "date": "2026-05-01",
+    "temperature_min": 18.3,
+    "temperature_max": 30.6,
+    "precipitations": 3.0,
+    "humidite": 71.2,
+    "vent": 23.1
+  },
+  {
+    "date": "2026-05-02",
+    "temperature_min": 21.8,
+    "temperature_max": 27.5,
+    "precipitations": 3.7,
+    "humidite": 88.8,
+    "vent": 14.9
+  },
+  {
+    "date": "2026-05-03",
+    "temperature_min": 19.2,
+    "temperature_max": 27.3,
+    "precipitations": 3.5,
+    "humidite": 85.8,
+    "vent": 18.9
+  },
+  {
+    "date": "2026-05-04",
+    "temperature_min": 18.4,
+    "temperature_max": 30.5,
+    "precipitations": 5.4,
+    "humidite": 77.4,
+    "vent": 6.5
+  },
+  {
+    "date": "2026-05-05",
+    "temperature_min": 21.3,
+    "temperature_max": 31.8,
+    "precipitations": 2.5,
+    "humidite": 82.3,
+    "vent": 21.3
+  },
+  {
+    "date": "2026-05-06",
+    "temperature_min": 22.4,
+    "temperature_max": 28.1,
+    "precipitations": 3.0,
+    "humidite": 66.5,
+    "vent": 24.8
+  },
+  {
+    "date": "2026-05-07",
+    "temperature_min": 20.9,
+    "temperature_max": 28.6,
+    "precipitations": 0.2,
+    "humidite": 80.3,
+    "vent": 6.9
+  },
+  {
+    "date": "2026-05-08",
+    "temperature_min": 22.8,
+    "temperature_max": 31.8,
+    "precipitations": 2.1,
+    "humidite": 76.4,
+    "vent": 8.3
+  },
+  {
+    "date": "2026-05-09",
+    "temperature_min": 18.0,
+    "temperature_max": 30.3,
+    "precipitations": 4.2,
+    "humidite": 74.4,
+    "vent": 12.8
+  },
+  {
+    "date": "2026-05-10",
+    "temperature_min": 22.4,
+    "temperature_max": 27.3,
+    "precipitations": 7.7,
+    "humidite": 67.7,
+    "vent": 8.4
+  },
+  {
+    "date": "2026-05-11",
+    "temperature_min": 21.9,
+    "temperature_max": 29.2,
+    "precipitations": 7.2,
+    "humidite": 66.6,
+    "vent": 7.8
+  },
+  {
+    "date": "2026-05-12",
+    "temperature_min": 18.4,
+    "temperature_max": 27.2,
+    "precipitations": 4.3,
+    "humidite": 75.3,
+    "vent": 10.0
+  },
+  {
+    "date": "2026-05-13",
+    "temperature_min": 22.8,
+    "temperature_max": 29.3,
+    "precipitations": 5.9,
+    "humidite": 83.9,
+    "vent": 12.9
+  },
+  {
+    "date": "2026-05-14",
+    "temperature_min": 23.3,
+    "temperature_max": 28.1,
+    "precipitations": 11.3,
+    "humidite": 83.7,
+    "vent": 15.8
+  },
+  {
+    "date": "2026-05-15",
+    "temperature_min": 21.0,
+    "temperature_max": 29.9,
+    "precipitations": 3.8,
+    "humidite": 79.2,
+    "vent": 12.8
+  },
+  {
+    "date": "2026-05-16",
+    "temperature_min": 23.4,
+    "temperature_max": 30.5,
+    "precipitations": 6.0,
+    "humidite": 79.0,
+    "vent": 13.7
+  },
+  {
+    "date": "2026-05-17",
+    "temperature_min": 20.7,
+    "temperature_max": 29.1,
+    "precipitations": 2.7,
+    "humidite": 76.1,
+    "vent": 8.1
+  },
+  {
+    "date": "2026-05-18",
+    "temperature_min": 21.1,
+    "temperature_max": 28.8,
+    "precipitations": 7.4,
+    "humidite": 81.7,
+    "vent": 6.7
+  },
+  {
+    "date": "2026-05-19",
+    "temperature_min": 19.6,
+    "temperature_max": 28.7,
+    "precipitations": 11.5,
+    "humidite": 67.9,
+    "vent": 17.9
+  },
+  {
+    "date": "2026-05-20",
+    "temperature_min": 19.8,
+    "temperature_max": 31.5,
+    "precipitations": 2.1,
+    "humidite": 81.1,
+    "vent": 16.3
+  },
+  {
+    "date": "2026-05-21",
+    "temperature_min": 19.7,
+    "temperature_max": 28.7,
+    "precipitations": 9.1,
+    "humidite": 75.7,
+    "vent": 11.3
+  },
+  {
+    "date": "2026-05-22",
+    "temperature_min": 20.7,
+    "temperature_max": 30.7,
+    "precipitations": 2.4,
+    "humidite": 89.1,
+    "vent": 22.5
+  },
+  {
+    "date": "2026-05-23",
+    "temperature_min": 20.2,
+    "temperature_max": 28.6,
+    "precipitations": 3.8,
+    "humidite": 69.7,
+    "vent": 15.5
+  },
+  {
+    "date": "2026-05-24",
+    "temperature_min": 24.0,
+    "temperature_max": 31.3,
+    "precipitations": 0.3,
+    "humidite": 86.9,
+    "vent": 16.3
+  },
+  {
+    "date": "2026-05-25",
+    "temperature_min": 18.4,
+    "temperature_max": 27.2,
+    "precipitations": 3.9,
+    "humidite": 86.3,
+    "vent": 22.9
+  },
+  {
+    "date": "2026-05-26",
+    "temperature_min": 20.2,
+    "temperature_max": 28.4,
+    "precipitations": 0.7,
+    "humidite": 73.5,
+    "vent": 21.2
+  },
+  {
+    "date": "2026-05-27",
+    "temperature_min": 22.2,
+    "temperature_max": 27.0,
+    "precipitations": 13.2,
+    "humidite": 70.0,
+    "vent": 9.6
+  },
+  {
+    "date": "2026-05-28",
+    "temperature_min": 21.6,
+    "temperature_max": 31.7,
+    "precipitations": 0.4,
+    "humidite": 68.0,
+    "vent": 12.7
+  },
+  {
+    "date": "2026-05-29",
+    "temperature_min": 19.3,
+    "temperature_max": 26.8,
+    "precipitations": 4.7,
+    "humidite": 73.3,
+    "vent": 13.9
+  },
+  {
+    "date": "2026-05-30",
+    "temperature_min": 23.7,
+    "temperature_max": 27.2,
+    "precipitations": 10.6,
+    "humidite": 74.3,
+    "vent": 6.2
+  },
+  {
+    "date": "2026-05-31",
+    "temperature_min": 22.8,
+    "temperature_max": 30.3,
+    "precipitations": 3.6,
+    "humidite": 79.8,
+    "vent": 19.3
+  },
+  {
+    "date": "2026-06-01",
+    "temperature_min": 18.1,
+    "temperature_max": 27.4,
+    "precipitations": 2.4,
+    "humidite": 82.0,
+    "vent": 5.6
+  },
+  {
+    "date": "2026-06-02",
+    "temperature_min": 23.6,
+    "temperature_max": 31.0,
+    "precipitations": 6.0,
+    "humidite": 70.6,
+    "vent": 23.1
+  },
+  {
+    "date": "2026-06-03",
+    "temperature_min": 22.7,
+    "temperature_max": 27.2,
+    "precipitations": 6.4,
+    "humidite": 84.8,
+    "vent": 22.6
+  },
+  {
+    "date": "2026-06-04",
+    "temperature_min": 21.5,
+    "temperature_max": 28.9,
+    "precipitations": 10.8,
+    "humidite": 81.4,
+    "vent": 13.0
+  },
+  {
+    "date": "2026-06-05",
+    "temperature_min": 23.7,
+    "temperature_max": 26.8,
+    "precipitations": 0.7,
+    "humidite": 88.0,
+    "vent": 16.2
+  },
+  {
+    "date": "2026-06-06",
+    "temperature_min": 21.8,
+    "temperature_max": 27.8,
+    "precipitations": 0.5,
+    "humidite": 66.0,
+    "vent": 11.4
+  },
+  {
+    "date": "2026-06-07",
+    "temperature_min": 21.2,
+    "temperature_max": 29.9,
+    "precipitations": 7.6,
+    "humidite": 79.3,
+    "vent": 6.3
+  },
+  {
+    "date": "2026-06-08",
+    "temperature_min": 23.7,
+    "temperature_max": 28.1,
+    "precipitations": 4.7,
+    "humidite": 81.3,
+    "vent": 15.1
+  },
+  {
+    "date": "2026-06-09",
+    "temperature_min": 22.9,
+    "temperature_max": 28.6,
+    "precipitations": 0.5,
+    "humidite": 71.9,
+    "vent": 12.8
+  },
+  {
+    "date": "2026-06-10",
+    "temperature_min": 22.0,
+    "temperature_max": 28.7,
+    "precipitations": 2.1,
+    "humidite": 82.7,
+    "vent": 22.7
+  },
+  {
+    "date": "2026-06-11",
+    "temperature_min": 20.2,
+    "temperature_max": 27.2,
+    "precipitations": 12.0,
+    "humidite": 87.8,
+    "vent": 21.8
+  },
+  {
+    "date": "2026-06-12",
+    "temperature_min": 18.7,
+    "temperature_max": 30.5,
+    "precipitations": 0.8,
+    "humidite": 73.5,
+    "vent": 19.4
+  },
+  {
+    "date": "2026-06-13",
+    "temperature_min": 18.1,
+    "temperature_max": 28.9,
+    "precipitations": 0.2,
+    "humidite": 77.3,
+    "vent": 8.6
+  },
+  {
+    "date": "2026-06-14",
+    "temperature_min": 20.8,
+    "temperature_max": 28.2,
+    "precipitations": 12.4,
+    "humidite": 70.4,
+    "vent": 8.4
+  },
+  {
+    "date": "2026-06-15",
+    "temperature_min": 18.6,
+    "temperature_max": 28.5,
+    "precipitations": 15.8,
+    "humidite": 83.2,
+    "vent": 12.2
+  },
+  {
+    "date": "2026-06-16",
+    "temperature_min": 20.2,
+    "temperature_max": 30.4,
+    "precipitations": 1.1,
+    "humidite": 71.8,
+    "vent": 14.5
+  },
+  {
+    "date": "2026-06-17",
+    "temperature_min": 20.9,
+    "temperature_max": 28.3,
+    "precipitations": 6.4,
+    "humidite": 71.4,
+    "vent": 7.4
+  },
+  {
+    "date": "2026-06-18",
+    "temperature_min": 19.6,
+    "temperature_max": 29.6,
+    "precipitations": 8.4,
+    "humidite": 67.5,
+    "vent": 24.1
+  },
+  {
+    "date": "2026-06-19",
+    "temperature_min": 19.2,
+    "temperature_max": 28.7,
+    "precipitations": 1.8,
+    "humidite": 79.3,
+    "vent": 14.1
+  },
+  {
+    "date": "2026-06-20",
+    "temperature_min": 21.1,
+    "temperature_max": 30.6,
+    "precipitations": 6.4,
+    "humidite": 74.6,
+    "vent": 5.4
+  },
+  {
+    "date": "2026-06-21",
+    "temperature_min": 23.4,
+    "temperature_max": 26.7,
+    "precipitations": 7.9,
+    "humidite": 65.0,
+    "vent": 21.6
+  },
+  {
+    "date": "2026-06-22",
+    "temperature_min": 20.5,
+    "temperature_max": 30.9,
+    "precipitations": 4.4,
+    "humidite": 88.5,
+    "vent": 12.9
+  },
+  {
+    "date": "2026-06-23",
+    "temperature_min": 18.9,
+    "temperature_max": 26.1,
+    "precipitations": 1.9,
+    "humidite": 84.0,
+    "vent": 14.5
+  },
+  {
+    "date": "2026-06-24",
+    "temperature_min": 19.3,
+    "temperature_max": 27.1,
+    "precipitations": 7.4,
+    "humidite": 89.0,
+    "vent": 16.0
+  },
+  {
+    "date": "2026-06-25",
+    "temperature_min": 18.1,
+    "temperature_max": 26.9,
+    "precipitations": 1.4,
+    "humidite": 89.9,
+    "vent": 15.8
+  },
+  {
+    "date": "2026-06-26",
+    "temperature_min": 22.2,
+    "temperature_max": 29.8,
+    "precipitations": 3.4,
+    "humidite": 69.8,
+    "vent": 23.2
+  },
+  {
+    "date": "2026-06-27",
+    "temperature_min": 22.9,
+    "temperature_max": 31.3,
+    "precipitations": 9.9,
+    "humidite": 84.3,
+    "vent": 16.7
+  },
+  {
+    "date": "2026-06-28",
+    "temperature_min": 20.1,
+    "temperature_max": 27.9,
+    "precipitations": 1.5,
+    "humidite": 77.7,
+    "vent": 20.1
+  },
+  {
+    "date": "2026-06-29",
+    "temperature_min": 19.8,
+    "temperature_max": 27.5,
+    "precipitations": 6.3,
+    "humidite": 66.3,
+    "vent": 14.4
+  },
+  {
+    "date": "2026-06-30",
+    "temperature_min": 20.3,
+    "temperature_max": 28.4,
+    "precipitations": 5.0,
+    "humidite": 84.8,
+    "vent": 19.1
+  },
+  {
+    "date": "2026-07-01",
+    "temperature_min": 23.0,
+    "temperature_max": 27.5,
+    "precipitations": 0.9,
+    "humidite": 70.5,
+    "vent": 24.0
+  },
+  {
+    "date": "2026-07-02",
+    "temperature_min": 20.6,
+    "temperature_max": 32.0,
+    "precipitations": 11.2,
+    "humidite": 77.9,
+    "vent": 21.8
+  },
+  {
+    "date": "2026-07-03",
+    "temperature_min": 21.5,
+    "temperature_max": 26.6,
+    "precipitations": 0.2,
+    "humidite": 66.9,
+    "vent": 15.8
+  },
+  {
+    "date": "2026-07-04",
+    "temperature_min": 22.8,
+    "temperature_max": 30.1,
+    "precipitations": 1.1,
+    "humidite": 69.8,
+    "vent": 6.7
+  },
+  {
+    "date": "2026-07-05",
+    "temperature_min": 22.6,
+    "temperature_max": 30.5,
+    "precipitations": 5.1,
+    "humidite": 80.9,
+    "vent": 8.3
+  },
+  {
+    "date": "2026-07-06",
+    "temperature_min": 21.1,
+    "temperature_max": 26.7,
+    "precipitations": 7.3,
+    "humidite": 72.2,
+    "vent": 16.5
+  },
+  {
+    "date": "2026-07-07",
+    "temperature_min": 19.7,
+    "temperature_max": 28.0,
+    "precipitations": 3.6,
+    "humidite": 73.1,
+    "vent": 9.9
+  },
+  {
+    "date": "2026-07-08",
+    "temperature_min": 21.5,
+    "temperature_max": 27.7,
+    "precipitations": 2.5,
+    "humidite": 87.3,
+    "vent": 9.1
+  },
+  {
+    "date": "2026-07-09",
+    "temperature_min": 18.2,
+    "temperature_max": 28.4,
+    "precipitations": 3.3,
+    "humidite": 88.1,
+    "vent": 17.9
+  },
+  {
+    "date": "2026-07-10",
+    "temperature_min": 18.4,
+    "temperature_max": 29.8,
+    "precipitations": 13.5,
+    "humidite": 65.3,
+    "vent": 11.4
+  },
+  {
+    "date": "2026-07-11",
+    "temperature_min": 20.8,
+    "temperature_max": 26.7,
+    "precipitations": 3.9,
+    "humidite": 73.7,
+    "vent": 9.5
+  },
+  {
+    "date": "2026-07-12",
+    "temperature_min": 19.3,
+    "temperature_max": 29.1,
+    "precipitations": 11.9,
+    "humidite": 65.9,
+    "vent": 23.8
+  },
+  {
+    "date": "2026-07-13",
+    "temperature_min": 22.1,
+    "temperature_max": 30.4,
+    "precipitations": 0.0,
+    "humidite": 74.4,
+    "vent": 11.7
+  },
+  {
+    "date": "2026-07-14",
+    "temperature_min": 18.8,
+    "temperature_max": 28.9,
+    "precipitations": 12.3,
+    "humidite": 86.6,
+    "vent": 5.1
+  },
+  {
+    "date": "2026-07-15",
+    "temperature_min": 20.1,
+    "temperature_max": 28.1,
+    "precipitations": 1.8,
+    "humidite": 78.4,
+    "vent": 5.4
+  },
+  {
+    "date": "2026-07-16",
+    "temperature_min": 20.6,
+    "temperature_max": 27.8,
+    "precipitations": 4.8,
+    "humidite": 89.3,
+    "vent": 16.2
+  },
+  {
+    "date": "2026-07-17",
+    "temperature_min": 20.0,
+    "temperature_max": 29.2,
+    "precipitations": 2.8,
+    "humidite": 82.8,
+    "vent": 8.0
+  },
+  {
+    "date": "2026-07-18",
+    "temperature_min": 21.5,
+    "temperature_max": 30.3,
+    "precipitations": 5.2,
+    "humidite": 69.3,
+    "vent": 10.4
+  },
+  {
+    "date": "2026-07-19",
+    "temperature_min": 23.0,
+    "temperature_max": 28.9,
+    "precipitations": 0.4,
+    "humidite": 85.0,
+    "vent": 22.1
+  },
+  {
+    "date": "2026-07-20",
+    "temperature_min": 18.3,
+    "temperature_max": 29.0,
+    "precipitations": 2.4,
+    "humidite": 72.2,
+    "vent": 23.0
+  },
+  {
+    "date": "2026-07-21",
+    "temperature_min": 22.5,
+    "temperature_max": 28.7,
+    "precipitations": 5.4,
+    "humidite": 66.8,
+    "vent": 13.5
+  },
+  {
+    "date": "2026-07-22",
+    "temperature_min": 22.2,
+    "temperature_max": 29.4,
+    "precipitations": 0.8,
+    "humidite": 86.7,
+    "vent": 19.6
+  },
+  {
+    "date": "2026-07-23",
+    "temperature_min": 21.4,
+    "temperature_max": 26.0,
+    "precipitations": 18.0,
+    "humidite": 65.7,
+    "vent": 20.4
+  },
+  {
+    "date": "2026-07-24",
+    "temperature_min": 23.7,
+    "temperature_max": 29.7,
+    "precipitations": 12.7,
+    "humidite": 80.5,
+    "vent": 24.0
+  },
+  {
+    "date": "2026-07-25",
+    "temperature_min": 19.1,
+    "temperature_max": 29.8,
+    "precipitations": 3.1,
+    "humidite": 72.7,
+    "vent": 10.8
+  },
+  {
+    "date": "2026-07-26",
+    "temperature_min": 19.0,
+    "temperature_max": 31.7,
+    "precipitations": 0.2,
+    "humidite": 66.4,
+    "vent": 7.7
+  },
+  {
+    "date": "2026-07-27",
+    "temperature_min": 19.1,
+    "temperature_max": 30.9,
+    "precipitations": 1.4,
+    "humidite": 77.9,
+    "vent": 16.0
+  },
+  {
+    "date": "2026-07-28",
+    "temperature_min": 23.8,
+    "temperature_max": 31.7,
+    "precipitations": 4.5,
+    "humidite": 70.7,
+    "vent": 9.3
+  },
+  {
+    "date": "2026-07-29",
+    "temperature_min": 21.2,
+    "temperature_max": 27.8,
+    "precipitations": 0.8,
+    "humidite": 76.9,
+    "vent": 18.7
+  },
+  {
+    "date": "2026-07-30",
+    "temperature_min": 20.0,
+    "temperature_max": 29.4,
+    "precipitations": 2.2,
+    "humidite": 75.3,
+    "vent": 12.8
+  },
+  {
+    "date": "2026-07-31",
+    "temperature_min": 21.4,
+    "temperature_max": 26.4,
+    "precipitations": 2.8,
+    "humidite": 76.6,
+    "vent": 14.7
+  },
+  {
+    "date": "2026-08-01",
+    "temperature_min": 22.8,
+    "temperature_max": 30.5,
+    "precipitations": 7.5,
+    "humidite": 72.7,
+    "vent": 11.1
+  },
+  {
+    "date": "2026-08-02",
+    "temperature_min": 22.4,
+    "temperature_max": 30.0,
+    "precipitations": 5.8,
+    "humidite": 82.4,
+    "vent": 13.6
+  },
+  {
+    "date": "2026-08-03",
+    "temperature_min": 22.7,
+    "temperature_max": 32.0,
+    "precipitations": 20.7,
+    "humidite": 87.8,
+    "vent": 5.3
+  },
+  {
+    "date": "2026-08-04",
+    "temperature_min": 22.9,
+    "temperature_max": 31.5,
+    "precipitations": 1.1,
+    "humidite": 88.9,
+    "vent": 19.2
+  },
+  {
+    "date": "2026-08-05",
+    "temperature_min": 22.8,
+    "temperature_max": 28.6,
+    "precipitations": 2.1,
+    "humidite": 72.0,
+    "vent": 11.3
+  },
+  {
+    "date": "2026-08-06",
+    "temperature_min": 23.9,
+    "temperature_max": 31.2,
+    "precipitations": 0.1,
+    "humidite": 78.9,
+    "vent": 15.5
+  },
+  {
+    "date": "2026-08-07",
+    "temperature_min": 20.5,
+    "temperature_max": 27.2,
+    "precipitations": 6.0,
+    "humidite": 84.1,
+    "vent": 21.0
+  },
+  {
+    "date": "2026-08-08",
+    "temperature_min": 21.4,
+    "temperature_max": 26.6,
+    "precipitations": 1.1,
+    "humidite": 84.6,
+    "vent": 12.7
+  },
+  {
+    "date": "2026-08-09",
+    "temperature_min": 21.8,
+    "temperature_max": 30.7,
+    "precipitations": 1.6,
+    "humidite": 76.4,
+    "vent": 12.7
+  },
+  {
+    "date": "2026-08-10",
+    "temperature_min": 23.9,
+    "temperature_max": 26.0,
+    "precipitations": 3.2,
+    "humidite": 71.8,
+    "vent": 9.7
+  },
+  {
+    "date": "2026-08-11",
+    "temperature_min": 18.2,
+    "temperature_max": 29.7,
+    "precipitations": 12.9,
+    "humidite": 74.0,
+    "vent": 23.6
+  },
+  {
+    "date": "2026-08-12",
+    "temperature_min": 18.8,
+    "temperature_max": 27.0,
+    "precipitations": 2.3,
+    "humidite": 75.4,
+    "vent": 7.4
+  },
+  {
+    "date": "2026-08-13",
+    "temperature_min": 23.9,
+    "temperature_max": 26.5,
+    "precipitations": 5.2,
+    "humidite": 73.7,
+    "vent": 6.0
+  },
+  {
+    "date": "2026-08-14",
+    "temperature_min": 22.9,
+    "temperature_max": 26.0,
+    "precipitations": 0.5,
+    "humidite": 89.3,
+    "vent": 13.1
+  },
+  {
+    "date": "2026-08-15",
+    "temperature_min": 23.8,
+    "temperature_max": 30.4,
+    "precipitations": 6.0,
+    "humidite": 77.3,
+    "vent": 22.6
+  },
+  {
+    "date": "2026-08-16",
+    "temperature_min": 23.7,
+    "temperature_max": 29.9,
+    "precipitations": 1.2,
+    "humidite": 68.7,
+    "vent": 21.6
+  },
+  {
+    "date": "2026-08-17",
+    "temperature_min": 22.4,
+    "temperature_max": 26.7,
+    "precipitations": 0.0,
+    "humidite": 68.1,
+    "vent": 8.5
+  },
+  {
+    "date": "2026-08-18",
+    "temperature_min": 19.8,
+    "temperature_max": 27.0,
+    "precipitations": 0.7,
+    "humidite": 73.3,
+    "vent": 16.7
+  },
+  {
+    "date": "2026-08-19",
+    "temperature_min": 19.7,
+    "temperature_max": 31.1,
+    "precipitations": 0.8,
+    "humidite": 80.1,
+    "vent": 20.2
+  },
+  {
+    "date": "2026-08-20",
+    "temperature_min": 20.7,
+    "temperature_max": 27.9,
+    "precipitations": 2.5,
+    "humidite": 67.9,
+    "vent": 8.7
+  },
+  {
+    "date": "2026-08-21",
+    "temperature_min": 23.9,
+    "temperature_max": 27.8,
+    "precipitations": 7.6,
+    "humidite": 65.7,
+    "vent": 18.0
+  },
+  {
+    "date": "2026-08-22",
+    "temperature_min": 21.1,
+    "temperature_max": 29.7,
+    "precipitations": 0.6,
+    "humidite": 79.9,
+    "vent": 7.6
+  },
+  {
+    "date": "2026-08-23",
+    "temperature_min": 20.1,
+    "temperature_max": 30.8,
+    "precipitations": 8.7,
+    "humidite": 69.3,
+    "vent": 21.5
+  },
+  {
+    "date": "2026-08-24",
+    "temperature_min": 20.0,
+    "temperature_max": 28.6,
+    "precipitations": 5.1,
+    "humidite": 87.4,
+    "vent": 6.8
+  },
+  {
+    "date": "2026-08-25",
+    "temperature_min": 20.0,
+    "temperature_max": 30.6,
+    "precipitations": 0.5,
+    "humidite": 74.1,
+    "vent": 6.2
+  },
+  {
+    "date": "2026-08-26",
+    "temperature_min": 23.4,
+    "temperature_max": 31.6,
+    "precipitations": 3.3,
+    "humidite": 65.3,
+    "vent": 15.3
+  },
+  {
+    "date": "2026-08-27",
+    "temperature_min": 20.5,
+    "temperature_max": 29.1,
+    "precipitations": 16.0,
+    "humidite": 84.7,
+    "vent": 16.8
+  },
+  {
+    "date": "2026-08-28",
+    "temperature_min": 24.0,
+    "temperature_max": 27.7,
+    "precipitations": 2.6,
+    "humidite": 87.5,
+    "vent": 12.4
+  },
+  {
+    "date": "2026-08-29",
+    "temperature_min": 20.4,
+    "temperature_max": 29.9,
+    "precipitations": 0.3,
+    "humidite": 75.4,
+    "vent": 15.0
+  },
+  {
+    "date": "2026-08-30",
+    "temperature_min": 19.6,
+    "temperature_max": 27.1,
+    "precipitations": 4.7,
+    "humidite": 66.3,
+    "vent": 12.6
+  },
+  {
+    "date": "2026-08-31",
+    "temperature_min": 22.9,
+    "temperature_max": 31.0,
+    "precipitations": 7.4,
+    "humidite": 83.9,
+    "vent": 6.2
+  },
+  {
+    "date": "2026-09-01",
+    "temperature_min": 23.1,
+    "temperature_max": 26.1,
+    "precipitations": 2.5,
+    "humidite": 83.7,
+    "vent": 21.0
+  },
+  {
+    "date": "2026-09-02",
+    "temperature_min": 23.5,
+    "temperature_max": 29.4,
+    "precipitations": 1.4,
+    "humidite": 77.1,
+    "vent": 12.5
+  },
+  {
+    "date": "2026-09-03",
+    "temperature_min": 18.9,
+    "temperature_max": 26.9,
+    "precipitations": 1.3,
+    "humidite": 72.9,
+    "vent": 13.5
+  },
+  {
+    "date": "2026-09-04",
+    "temperature_min": 22.3,
+    "temperature_max": 29.6,
+    "precipitations": 5.3,
+    "humidite": 66.6,
+    "vent": 9.6
+  },
+  {
+    "date": "2026-09-05",
+    "temperature_min": 23.3,
+    "temperature_max": 29.7,
+    "precipitations": 3.0,
+    "humidite": 84.6,
+    "vent": 22.4
+  },
+  {
+    "date": "2026-09-06",
+    "temperature_min": 20.4,
+    "temperature_max": 31.5,
+    "precipitations": 2.1,
+    "humidite": 69.9,
+    "vent": 5.7
+  },
+  {
+    "date": "2026-09-07",
+    "temperature_min": 18.1,
+    "temperature_max": 27.4,
+    "precipitations": 0.3,
+    "humidite": 80.6,
+    "vent": 9.2
+  },
+  {
+    "date": "2026-09-08",
+    "temperature_min": 21.9,
+    "temperature_max": 26.7,
+    "precipitations": 1.7,
+    "humidite": 65.7,
+    "vent": 15.1
+  },
+  {
+    "date": "2026-09-09",
+    "temperature_min": 20.2,
+    "temperature_max": 29.3,
+    "precipitations": 1.9,
+    "humidite": 68.0,
+    "vent": 17.5
+  },
+  {
+    "date": "2026-09-10",
+    "temperature_min": 23.2,
+    "temperature_max": 26.0,
+    "precipitations": 3.7,
+    "humidite": 83.2,
+    "vent": 14.5
+  },
+  {
+    "date": "2026-09-11",
+    "temperature_min": 21.1,
+    "temperature_max": 31.6,
+    "precipitations": 6.7,
+    "humidite": 76.8,
+    "vent": 9.9
+  },
+  {
+    "date": "2026-09-12",
+    "temperature_min": 18.2,
+    "temperature_max": 31.9,
+    "precipitations": 0.4,
+    "humidite": 81.4,
+    "vent": 22.0
+  },
+  {
+    "date": "2026-09-13",
+    "temperature_min": 21.5,
+    "temperature_max": 28.0,
+    "precipitations": 1.3,
+    "humidite": 85.9,
+    "vent": 16.3
+  },
+  {
+    "date": "2026-09-14",
+    "temperature_min": 19.3,
+    "temperature_max": 28.2,
+    "precipitations": 8.9,
+    "humidite": 84.7,
+    "vent": 14.5
+  },
+  {
+    "date": "2026-09-15",
+    "temperature_min": 19.8,
+    "temperature_max": 30.3,
+    "precipitations": 4.3,
+    "humidite": 68.9,
+    "vent": 19.5
+  },
+  {
+    "date": "2026-09-16",
+    "temperature_min": 22.4,
+    "temperature_max": 31.1,
+    "precipitations": 1.9,
+    "humidite": 81.8,
+    "vent": 7.1
+  },
+  {
+    "date": "2026-09-17",
+    "temperature_min": 23.9,
+    "temperature_max": 28.5,
+    "precipitations": 1.5,
+    "humidite": 68.0,
+    "vent": 8.2
+  },
+  {
+    "date": "2026-09-18",
+    "temperature_min": 22.4,
+    "temperature_max": 28.3,
+    "precipitations": 6.2,
+    "humidite": 81.8,
+    "vent": 6.9
+  },
+  {
+    "date": "2026-09-19",
+    "temperature_min": 23.3,
+    "temperature_max": 28.8,
+    "precipitations": 2.8,
+    "humidite": 69.9,
+    "vent": 11.5
+  },
+  {
+    "date": "2026-09-20",
+    "temperature_min": 23.4,
+    "temperature_max": 27.9,
+    "precipitations": 8.5,
+    "humidite": 80.5,
+    "vent": 8.0
+  },
+  {
+    "date": "2026-09-21",
+    "temperature_min": 18.7,
+    "temperature_max": 26.2,
+    "precipitations": 7.0,
+    "humidite": 83.9,
+    "vent": 23.8
+  },
+  {
+    "date": "2026-09-22",
+    "temperature_min": 22.1,
+    "temperature_max": 29.0,
+    "precipitations": 10.2,
+    "humidite": 80.2,
+    "vent": 7.8
+  },
+  {
+    "date": "2026-09-23",
+    "temperature_min": 18.7,
+    "temperature_max": 29.7,
+    "precipitations": 1.3,
+    "humidite": 66.9,
+    "vent": 21.8
+  },
+  {
+    "date": "2026-09-24",
+    "temperature_min": 18.7,
+    "temperature_max": 27.5,
+    "precipitations": 7.3,
+    "humidite": 72.7,
+    "vent": 16.0
+  }
+];
+const BAGASSE = [
+  {
+    "annee": 2010,
+    "production_gwh": 220.0,
+    "bagasse_kt": 520.0
+  },
+  {
+    "annee": 2015,
+    "production_gwh": 210.0,
+    "bagasse_kt": 500.0
+  },
+  {
+    "annee": 2018,
+    "production_gwh": 195.0,
+    "bagasse_kt": 470.0
+  },
+  {
+    "annee": 2019,
+    "production_gwh": 190.0,
+    "bagasse_kt": 460.0
+  },
+  {
+    "annee": 2020,
+    "production_gwh": 185.0,
+    "bagasse_kt": 450.0
+  },
+  {
+    "annee": 2021,
+    "production_gwh": 180.0,
+    "bagasse_kt": 440.0
+  },
+  {
+    "annee": 2022,
+    "production_gwh": 175.0,
+    "bagasse_kt": 420.0
+  },
+  {
+    "annee": 2023,
+    "production_gwh": 201.0,
+    "bagasse_kt": 430.0
+  },
+  {
+    "annee": 2024,
+    "production_gwh": 174.1,
+    "bagasse_kt": 379.1
+  }
+];
+const PELLETS = [
+  {
+    "annee": 2023,
+    "tonnes": 238341,
+    "production_gwh": 320.9,
+    "part_pct": 10.5
+  },
+  {
+    "annee": 2024,
+    "tonnes": 547290,
+    "production_gwh": 710.9,
+    "part_pct": 23.2
+  }
+];
+const CANECOH = [
+  {
+    "systeme": "Conventionnel",
+    "ift": 4.8,
+    "rendement": 100,
+    "temps_travail": 100,
+    "charges": 100,
+    "adventices": 15
+  },
+  {
+    "systeme": "Fauche",
+    "ift": 2.4,
+    "rendement": 92,
+    "temps_travail": 172,
+    "charges": 153,
+    "adventices": 25
+  },
+  {
+    "systeme": "PDS",
+    "ift": 1.8,
+    "rendement": 82,
+    "temps_travail": 249,
+    "charges": 239,
+    "adventices": 30
+  }
+];
+const BSV = [
+  {
+    "parcelle": "P1",
+    "commune": "St-Paul",
+    "lieu": "Bras de l'Ermitage",
+    "altitude": 264,
+    "variete": "R570/R579/R589",
+    "stade": "Croissance"
+  },
+  {
+    "parcelle": "P2",
+    "commune": "St-Louis",
+    "lieu": "Plateau du Gol",
+    "altitude": 23,
+    "variete": "R579/R570",
+    "stade": "Croissance"
+  },
+  {
+    "parcelle": "P3",
+    "commune": "St-Philippe",
+    "lieu": "Baril",
+    "altitude": 71,
+    "variete": "R570/R582/R585",
+    "stade": "Croissance"
+  },
+  {
+    "parcelle": "P4",
+    "commune": "St-Leu",
+    "lieu": "Portail",
+    "altitude": 260,
+    "variete": "R579",
+    "stade": "Croissance"
+  },
+  {
+    "parcelle": "P5",
+    "commune": "St-Joseph",
+    "lieu": "Cayenne",
+    "altitude": 36,
+    "variete": "R584/R579",
+    "stade": "Croissance"
+  },
+  {
+    "parcelle": "P6",
+    "commune": "Bras Panon",
+    "lieu": "Beauvallon",
+    "altitude": 19,
+    "variete": "R579/R585",
+    "stade": "Croissance"
+  },
+  {
+    "parcelle": "P7",
+    "commune": "Ste-Rose",
+    "lieu": "Pointe Corail",
+    "altitude": 50,
+    "variete": "R570/R579",
+    "stade": "Croissance"
+  },
+  {
+    "parcelle": "P8",
+    "commune": "St-André",
+    "lieu": "Dioré",
+    "altitude": 400,
+    "variete": "R570",
+    "stade": "Croissance"
+  },
+  {
+    "parcelle": "P9",
+    "commune": "Ste-Marie",
+    "lieu": "Bois Rouge",
+    "altitude": 168,
+    "variete": "R585",
+    "stade": "Croissance"
+  },
+  {
+    "parcelle": "P10",
+    "commune": "Petite-Île",
+    "lieu": "—",
+    "altitude": 350,
+    "variete": "—",
+    "stade": "Croissance"
+  }
+];
+const MOSICAS = [
+  {
+    "annee": 2020,
+    "rcp26": 75,
+    "rcp45": 75,
+    "rcp85": 75
+  },
+  {
+    "annee": 2030,
+    "rcp26": 74,
+    "rcp45": 73,
+    "rcp85": 72
+  },
+  {
+    "annee": 2040,
+    "rcp26": 74,
+    "rcp45": 71,
+    "rcp85": 69
+  },
+  {
+    "annee": 2050,
+    "rcp26": 73,
+    "rcp45": 69,
+    "rcp85": 65
+  },
+  {
+    "annee": 2060,
+    "rcp26": 72,
+    "rcp45": 67,
+    "rcp85": 61
+  },
+  {
+    "annee": 2070,
+    "rcp26": 71,
+    "rcp45": 65,
+    "rcp85": 57
+  },
+  {
+    "annee": 2080,
+    "rcp26": 70,
+    "rcp45": 63,
+    "rcp85": 53
+  },
+  {
+    "annee": 2090,
+    "rcp26": 69,
+    "rcp45": 61,
+    "rcp85": 49
+  }
+];
+const BASSINS = [
+  {
+    "bassin": "Beaufond",
+    "production_t": 280000,
+    "surface_ha": 4200
+  },
+  {
+    "bassin": "Bois Rouge",
+    "production_t": 320000,
+    "surface_ha": 4800
+  },
+  {
+    "bassin": "Savanna",
+    "production_t": 250000,
+    "surface_ha": 3800
+  },
+  {
+    "bassin": "Gol",
+    "production_t": 310000,
+    "surface_ha": 4500
+  },
+  {
+    "bassin": "Grand Bois",
+    "production_t": 180000,
+    "surface_ha": 2840
+  }
+];
+const SUCRES = [
+  {
+    "type": "Sucre de spécialité",
+    "pourcentage": 35,
+    "destination": "Consommation directe"
+  },
+  {
+    "type": "Sucre brut (vrac)",
+    "pourcentage": 50,
+    "destination": "Raffinage Europe"
+  },
+  {
+    "type": "Sucre blanc",
+    "pourcentage": 15,
+    "destination": "Marché local"
+  }
+];
+const EMPLOIS = [
+  {
+    "categorie": "Exploitations",
+    "nb": 2700
+  },
+  {
+    "categorie": "Industrie sucrière",
+    "nb": 4200
+  },
+  {
+    "categorie": "Transport et logistique",
+    "nb": 1800
+  },
+  {
+    "categorie": "Emplois induits",
+    "nb": 9600
+  }
+];
+const SUBVENTIONS = [
+  {
+    "annee": 2020,
+    "montant_millions_eur": 38.5
+  },
+  {
+    "annee": 2021,
+    "montant_millions_eur": 40.2
+  },
+  {
+    "annee": 2022,
+    "montant_millions_eur": 42.1
+  },
+  {
+    "annee": 2023,
+    "montant_millions_eur": 44.8
+  },
+  {
+    "annee": 2024,
+    "montant_millions_eur": 46.3
+  }
+];
+const TIMELINE = [
+  {
+    "annee": 1810,
+    "titre": "Introduction industrielle",
+    "type": "histoire",
+    "description": "Développement des premières sucreries industrielles sur l'île."
+  },
+  {
+    "annee": 1946,
+    "titre": "Départementalisation",
+    "type": "politique",
+    "description": "La Réunion devient département français, la filière canne est intégrée aux politiques nationales."
+  },
+  {
+    "annee": 1961,
+    "titre": "Création du FIDOM",
+    "type": "politique",
+    "description": "Mise en place du Fond d'Investissement pour le Développement Économique et Social des DOM."
+  },
+  {
+    "annee": 1984,
+    "titre": "Création de l'ODEADOM",
+    "type": "institution",
+    "description": "L'Office de Développement de l'Économie Agricole des DOM est créé pour soutenir la filière."
+  },
+  {
+    "annee": 1991,
+    "titre": "Cyclone Firinga",
+    "type": "climat",
+    "description": "Cyclone majeur qui impacte fortement la production cannière."
+  },
+  {
+    "annee": 2000,
+    "titre": "Réforme de l'OCM Sucre",
+    "type": "politique",
+    "description": "Nouvelle Organisation Commune de Marché du sucre dans l'UE."
+  },
+  {
+    "annee": 2005,
+    "titre": "Baisse des prix UE",
+    "type": "economie",
+    "description": "Réforme de l'OCM sucre : baisse progressive des prix garantis (-36%)."
+  },
+  {
+    "annee": 2006,
+    "titre": "Loi programme DOM",
+    "type": "politique",
+    "description": "Loi pour le développement économique des outre-mer, soutien renforcé à la canne."
+  },
+  {
+    "annee": 2008,
+    "titre": "Crise alimentaire mondiale",
+    "type": "economie",
+    "description": "Flambée des prix agricoles, revalorisation du sucre."
+  },
+  {
+    "annee": 2010,
+    "titre": "Fin des quotas betterave",
+    "type": "politique",
+    "description": "Négociations UE sur l'avenir des quotas sucriers."
+  },
+  {
+    "annee": 2012,
+    "titre": "Cyclone Dumile",
+    "type": "climat",
+    "description": "Cyclone qui cause des dégâts importants aux plantations."
+  },
+  {
+    "annee": 2013,
+    "titre": "Plan Canne Durable",
+    "type": "institution",
+    "description": "Lancement du plan pour une canne durable à La Réunion (réduction pesticides)."
+  },
+  {
+    "annee": 2015,
+    "titre": "Accord de Paris",
+    "type": "climat",
+    "description": "Engagements climatiques mondiaux, impacts sur les politiques agricoles."
+  },
+  {
+    "annee": 2017,
+    "titre": "Fin des quotas sucriers UE",
+    "type": "politique",
+    "description": "Suppression des quotas de production sucrière dans l'Union Européenne."
+  },
+  {
+    "annee": 2018,
+    "titre": "CanécoH V1",
+    "type": "recherche",
+    "description": "Premier projet d'expérimentation de systèmes économes en herbicides."
+  },
+  {
+    "annee": 2019,
+    "titre": "Cyclone Belal",
+    "type": "climat",
+    "description": "Passage de Belal au nord de l'île, dégâts modérés."
+  },
+  {
+    "annee": 2020,
+    "titre": "COVID-19",
+    "type": "economie",
+    "description": "Pandémie mondiale, perturbations logistiques et baisse de la demande."
+  },
+  {
+    "annee": 2021,
+    "titre": "Enquête pratiques culturales",
+    "type": "recherche",
+    "description": "Enquête Agreste sur les pratiques de désherbage de la canne."
+  },
+  {
+    "annee": 2022,
+    "titre": "Cyclone Batsirai",
+    "type": "climat",
+    "description": "Cyclone majeur : production chute à 1 436 226 t (vs 1 800 000 t attendues)."
+  },
+  {
+    "annee": 2023,
+    "titre": "CanécoH V2",
+    "type": "recherche",
+    "description": "Deuxième phase du projet, publication des résultats 2026."
+  },
+  {
+    "annee": 2024,
+    "titre": "Conversion Albioma 100% biomasse",
+    "type": "energie",
+    "description": "Bois-Rouge et Le Gol converties : 73% renouvelable dans le mix énergétique."
+  },
+  {
+    "annee": 2024,
+    "titre": "Cyclone Garance",
+    "type": "climat",
+    "description": "Cyclone intense : production 2024 s'effondre à 1 137 720 t (-20,8%)."
+  },
+  {
+    "annee": 2025,
+    "titre": "Nouveau plan canne",
+    "type": "politique",
+    "description": "Négociations pour un nouveau plan de soutien à la filière canne."
+  }
+];
+
+const PLOT_CONFIG = { responsive: true, displaylogo: false };
+const FMT = n => n.toLocaleString('fr-FR');
+let selectedYear = 2024;
+
+// ============================================================
+// SÉLECTEUR D'ANNÉE
+// ============================================================
+function initYearSelector() {
+  const slider = document.getElementById('yearSlider');
+  const display = document.getElementById('yearDisplay');
+  const buttons = document.getElementById('yearButtons');
+
+  // Boutons rapides pour les années marquantes
+  const quickYears = [2000, 2005, 2010, 2015, 2020, 2022, 2023, 2024];
+  buttons.innerHTML = quickYears.map(y =>
+    `<button class="year-btn" data-year="${y}">${y}</button>`
+  ).join('');
+
+  slider.addEventListener('input', e => {
+    selectedYear = parseInt(e.target.value);
+    updateYearDisplay();
+    updateAllCharts();
+  });
+
+  buttons.querySelectorAll('.year-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      selectedYear = parseInt(btn.dataset.year);
+      slider.value = selectedYear;
+      updateYearDisplay();
+      updateAllCharts();
+    });
+  });
+}
+
+function updateYearDisplay() {
+  document.getElementById('yearDisplay').textContent = selectedYear;
+  document.getElementById('detailYear').textContent = selectedYear;
+  document.querySelectorAll('.year-btn').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.year) === selectedYear);
+  });
+  renderYearDetail();
+}
+
+// ============================================================
+// PANNEAU DÉTAIL ANNÉE
+// ============================================================
+function renderYearDetail() {
+  const row = AGRICULTURE.find(r => r.annee === selectedYear);
+  if (!row) return;
+
+  const items = [
+    { lbl: 'Production totale', val: FMT(row.production_total) + ' t' },
+    { lbl: 'Sucre', val: FMT(row.production_sucre) + ' t' },
+    { lbl: 'Rhum', val: FMT(row.production_rhum) + ' t' },
+    { lbl: 'Bagasse', val: FMT(row.production_bagasse) + ' t' },
+    { lbl: 'Électricité bagasse', val: row.electricite_bagasse + ' GWh' },
+    { lbl: 'Surface cultivée', val: FMT(row.surface_cultivee) + ' ha' },
+    { lbl: 'Rendement', val: row.rendement + ' t/ha' },
+    { lbl: 'Prix / tonne', val: row.prix_tonne + ' €' },
+    { lbl: 'Valeur production', val: row.valeur_production_m_eur + ' M€' },
+    { lbl: 'Emplois filière', val: FMT(row.emplois_total) },
+    { lbl: 'Exploitations', val: FMT(row.exploitations) },
+    { lbl: 'Exportations', val: row.exportations_pct.toFixed(1) + ' %' },
+    { lbl: 'IFT moyen', val: row.ift_moyen.toFixed(2) },
+    { lbl: 'Pluviométrie', val: FMT(row.pluviometrie_mm) + ' mm' },
+    { lbl: 'Température moy.', val: row.temp_moyenne + ' °C' },
+    { lbl: 'Cyclones', val: row.nb_cyclones },
+  ];
+
+  document.getElementById('yearDetailGrid').innerHTML = items.map(it =>
+    `<div class="year-detail-item">
+       <div class="lbl">${it.lbl}</div>
+       <div class="val">${it.val}</div>
+     </div>`
+  ).join('');
+}
+
+// ============================================================
+// FRISE CHRONOLOGIQUE
+// ============================================================
+function renderTimeline() {
+  const track = document.getElementById('timelineTrack');
+  const tooltip = document.getElementById('timelineTooltip');
+
+  const sortedEvents = [...TIMELINE].sort((a, b) => a.annee - b.annee);
+
+  track.innerHTML = sortedEvents.map((ev, idx) =>
+    `<div class="timeline-event ${ev.type}" data-idx="${idx}" data-year="${ev.annee}">
+       <div class="timeline-dot"></div>
+       <div class="timeline-year">${ev.annee}</div>
+       <div class="timeline-label">${ev.titre}</div>
+     </div>`
+  ).join('');
+
+  // Positionnement proportionnel basé sur les années
+  const allYears = sortedEvents.map(e => e.annee);
+  const minY = Math.min(...allYears);
+  const maxY = Math.max(...allYears);
+  const range = maxY - minY || 1;
+
+  track.querySelectorAll('.timeline-event').forEach(el => {
+    const year = parseInt(el.dataset.year);
+    const pct = ((year - minY) / range) * 90 + 5;
+    el.style.position = 'absolute';
+    el.style.left = pct + '%';
+    el.style.transform = 'translateX(-50%)';
+  });
+
+  // Track plus large
+  track.style.minWidth = '1600px';
+
+  // Événements tooltip + sélection
+  track.querySelectorAll('.timeline-event').forEach(el => {
+    el.addEventListener('mouseenter', e => {
+      const ev = sortedEvents[parseInt(el.dataset.idx)];
+      document.getElementById('ttYear').textContent = ev.annee;
+      document.getElementById('ttTitle').textContent = ev.titre;
+      document.getElementById('ttDesc').textContent = ev.description;
+      document.getElementById('ttType').textContent = ev.type;
+      tooltip.classList.add('visible');
+    });
+    el.addEventListener('mousemove', e => {
+      tooltip.style.left = (e.clientX + 15) + 'px';
+      tooltip.style.top = (e.clientY + 15) + 'px';
+    });
+    el.addEventListener('mouseleave', () => {
+      tooltip.classList.remove('visible');
+    });
+    el.addEventListener('click', () => {
+      const year = parseInt(el.dataset.year);
+      // Si l'année est dans la plage du dashboard (2000-2024), on la sélectionne
+      if (year >= 2000 && year <= 2024) {
+        selectedYear = year;
+        document.getElementById('yearSlider').value = year;
+        updateYearDisplay();
+        updateAllCharts();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    });
+  });
+}
+
+// ============================================================
+// KPIs (dépendent de l'année sélectionnée)
+// ============================================================
+function renderKPIs() {
+  const idx = AGRICULTURE.findIndex(r => r.annee === selectedYear);
+  if (idx < 0) return;
+  const latest = AGRICULTURE[idx];
+  const prev = AGRICULTURE[Math.max(0, idx - 1)];
+  const deltaProd = ((latest.production_total - prev.production_total) / prev.production_total * 100);
+  const deltaRend = latest.rendement - prev.rendement;
+
+  document.getElementById('kpiGrid').innerHTML = `
+    <div class="metric-card">
+      <div class="metric-label">Production ${latest.annee}</div>
+      <div class="metric-value">${FMT(latest.production_total)} t</div>
+      <div class="metric-delta ${deltaProd >= 0 ? 'positive' : 'negative'}">
+        ${deltaProd >= 0 ? '▲' : '▼'} ${deltaProd.toFixed(1)}% vs ${prev.annee}
+      </div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Rendement</div>
+      <div class="metric-value">${latest.rendement.toFixed(1)} t/ha</div>
+      <div class="metric-delta ${deltaRend >= 0 ? 'positive' : 'negative'}">
+        ${deltaRend >= 0 ? '+' : ''}${deltaRend.toFixed(1)} t/ha
+      </div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Surface cultivée</div>
+      <div class="metric-value">${FMT(latest.surface_cultivee)} ha</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Électricité bagasse</div>
+      <div class="metric-value">${FMT(latest.electricite_bagasse)} GWh</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Valeur production</div>
+      <div class="metric-value">${latest.valeur_production_m_eur} M€</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Emplois filière</div>
+      <div class="metric-value">${FMT(latest.emplois_total)}</div>
+    </div>
+  `;
+}
+
+// ============================================================
+// GRAPHIQUES
+// ============================================================
+
+function renderProductionChart() {
+  const x = AGRICULTURE.map(r => r.annee);
+  const y = AGRICULTURE.map(r => r.production_total);
+
+  // Point sélectionné
+  const selX = [selectedYear];
+  const selY = [AGRICULTURE.find(r => r.annee === selectedYear)?.production_total];
+
+  Plotly.newPlot('chartProduction', [
+    { x, y, mode:'lines+markers', name:'Production',
+      line:{color:'#2E8B57', width:3}, marker:{size:6},
+      hovertemplate:'<b>%{x}</b><br>Production : %{y:,.0f} t<extra></extra>' },
+    { x: selX, y: selY, mode:'markers', name:'Année sélectionnée',
+      marker:{size:18, color:'#e74c3c', symbol:'circle-open', line:{width:3}},
+      hovertemplate:'<b>%{x}</b><br>Sélection<extra></extra>' }
+  ], {
+    xaxis:{title:'Année'}, yaxis:{title:'Tonnes'},
+    template:'plotly_white', margin:{t:20,r:20,b:50,l:80},
+    legend:{orientation:'h', y:-0.2}
+  }, PLOT_CONFIG);
+}
+
+function renderRendementChart() {
+  const x = AGRICULTURE.map(r => r.annee);
+  const selX = [selectedYear];
+  const sel = AGRICULTURE.find(r => r.annee === selectedYear);
+
+  Plotly.newPlot('chartRendement', [
+    { x, y: AGRICULTURE.map(r=>r.rendement), name:'Rendement (t/ha)',
+      line:{color:'#1f77b4', width:3}, yaxis:'y' },
+    { x, y: AGRICULTURE.map(r=>r.surface_cultivee), name:'Surface (ha)',
+      line:{color:'#ff7f0e', width:3}, yaxis:'y2' },
+    { x: selX, y: [sel?.rendement], mode:'markers', name:'Sélection',
+      marker:{size:16, color:'#e74c3c', symbol:'circle-open', line:{width:3}}, yaxis:'y' }
+  ], {
+    xaxis:{title:'Année'},
+    yaxis:{title:'Rendement (t/ha)', side:'left'},
+    yaxis2:{title:'Surface (ha)', side:'right', overlaying:'y'},
+    template:'plotly_white', margin:{t:20,r:70,b:50,l:70},
+    legend:{orientation:'h', y:-0.2}
+  }, PLOT_CONFIG);
+}
+
+function renderWaterfallChart() {
+  const l = AGRICULTURE.find(r => r.annee === selectedYear);
+  if (!l) return;
+  Plotly.newPlot('chartWaterfall', [{
+    type:'waterfall', orientation:'v',
+    measure:['total','relative','relative','relative','total'],
+    x:['Production','Sucre','Rhum','Bagasse','Net'],
+    y:[l.production_total, -l.production_sucre, -l.production_rhum,
+       -l.production_bagasse, l.production_total],
+    text:[FMT(l.production_total), '-'+FMT(l.production_sucre),
+          '-'+FMT(l.production_rhum), '-'+FMT(l.production_bagasse),
+          FMT(l.production_total)],
+    textposition:'outside',
+    connector:{line:{color:'#555'}},
+    increasing:{marker:{color:'#2E8B57'}},
+    decreasing:{marker:{color:'#e74c3c'}},
+    totals:{marker:{color:'#3498db'}}
+  }], { showlegend:false, template:'plotly_white',
+        margin:{t:20,r:20,b:50,l:70} }, PLOT_CONFIG);
+}
+
+function renderSucresChart() {
+  const l = AGRICULTURE.find(r => r.annee === selectedYear);
+  if (!l) return;
+  const data = [
+    { type: 'Sucre de spécialité', val: l.production_sucre * 0.35 },
+    { type: 'Sucre brut (vrac)',   val: l.production_sucre * 0.50 },
+    { type: 'Sucre blanc',         val: l.production_sucre * 0.15 },
+  ];
+  Plotly.newPlot('chartSucres', [{
+    type:'sunburst',
+    labels: data.map(d=>d.type),
+    parents: data.map(()=>''),
+    values: data.map(d=>d.val),
+    textinfo:'label+percent root',
+    marker:{ colors:['#2E8B57','#3CB371','#90EE90'] }
+  }], { margin:{t:10,r:10,b:10,l:10} }, PLOT_CONFIG);
+}
+
+function renderBagasseChart() {
+  const b = BAGASSE;
+  const p = PELLETS;
+  const selX = [selectedYear];
+  const selB = b.find(r => r.annee === selectedYear);
+  const selP = p.find(r => r.annee === selectedYear);
+
+  const traces = [
+    { x:b.map(r=>r.annee), y:b.map(r=>r.production_gwh), name:'Bagasse (GWh)',
+      type:'bar', marker:{color:'#2E8B57'}, yaxis:'y' },
+    { x:p.map(r=>r.annee), y:p.map(r=>r.production_gwh), name:'Pellets (GWh)',
+      type:'bar', marker:{color:'#8B4513'}, yaxis:'y' },
+    { x:b.map(r=>r.annee), y:b.map(r=>r.bagasse_kt), name:'Bagasse (kt)',
+      type:'scatter', mode:'lines+markers',
+      line:{color:'#1f77b4', width:3}, marker:{size:7}, yaxis:'y2' }
+  ];
+  if (selB) {
+    traces.push({
+      x: selX, y: [selB.production_gwh], mode:'markers', name:'Sélection',
+      marker:{size:16, color:'#e74c3c', symbol:'circle-open', line:{width:3}}, yaxis:'y'
+    });
+  }
+
+  Plotly.newPlot('chartBagasse', traces, {
+    barmode:'stack',
+    xaxis:{title:'Année'},
+    yaxis:{title:'GWh', side:'left'},
+    yaxis2:{title:'Bagasse (kt)', side:'right', overlaying:'y'},
+    template:'plotly_white',
+    legend:{orientation:'h', y:-0.2}
+  }, PLOT_CONFIG);
+}
+
+function renderElectriciteChart() {
+  const selX = [selectedYear];
+  const sel = AGRICULTURE.find(r => r.annee === selectedYear);
+
+  Plotly.newPlot('chartElectricite', [
+    { x: AGRICULTURE.map(r=>r.annee), y: AGRICULTURE.map(r=>r.electricite_bagasse),
+      fill:'tozeroy', mode:'lines', name:'GWh',
+      line:{color:'#2E8B57', width:2},
+      fillcolor:'rgba(46,139,87,0.2)' },
+    { x: selX, y: [sel?.electricite_bagasse], mode:'markers', name:'Sélection',
+      marker:{size:16, color:'#e74c3c', symbol:'circle-open', line:{width:3}} }
+  ], { xaxis:{title:'Année'}, yaxis:{title:'GWh'},
+        template:'plotly_white', margin:{t:20,r:20,b:50,l:70},
+        legend:{orientation:'h', y:-0.2} }, PLOT_CONFIG);
+}
+
+function renderCanecohChart() {
+  const categories = ['IFT', 'Rendement', 'Temps travail', 'Charges', 'Adventices'];
+  const traces = CANECOH.map(sys => ({
+    type: 'scatterpolar',
+    r: [sys.ift * 20, sys.rendement, sys.temps_travail, sys.charges, sys.adventices * 3],
+    theta: categories,
+    fill: 'toself',
+    name: sys.systeme
+  }));
+  Plotly.newPlot('chartCanecoh', traces, {
+    polar: { radialaxis: { visible: true, range: [0, 260] } },
+    template: 'plotly_white',
+    showlegend: true,
+    legend: { orientation: 'h', y: -0.15 }
+  }, PLOT_CONFIG);
+}
+
+function renderIFTChart() {
+  const x = AGRICULTURE.map(r => r.annee);
+  const y = AGRICULTURE.map(r => r.ift_moyen);
+  const selX = [selectedYear];
+  const sel = AGRICULTURE.find(r => r.annee === selectedYear);
+
+  Plotly.newPlot('chartIFT', [
+    { x, y, mode:'lines+markers', name:'IFT moyen',
+      line:{color:'#9b59b6', width:3}, marker:{size:6},
+      fill:'tozeroy', fillcolor:'rgba(155,89,182,0.15)' },
+    { x: selX, y: [sel?.ift_moyen], mode:'markers', name:'Sélection',
+      marker:{size:16, color:'#e74c3c', symbol:'circle-open', line:{width:3}} }
+  ], { xaxis:{title:'Année'}, yaxis:{title:'IFT'},
+       template:'plotly_white', margin:{t:20,r:20,b:50,l:70},
+       legend:{orientation:'h', y:-0.2} }, PLOT_CONFIG);
+}
+
+function renderClimatChart() {
+  const x = AGRICULTURE.map(r => r.annee);
+  const pluie = AGRICULTURE.map(r => r.pluviometrie_mm);
+  const temp = AGRICULTURE.map(r => r.temp_moyenne);
+  const selX = [selectedYear];
+  const sel = AGRICULTURE.find(r => r.annee === selectedYear);
+
+  Plotly.newPlot('chartClimat', [
+    { x, y: pluie, name:'Pluviométrie (mm)', type:'bar',
+      marker:{color:'#3498db', opacity:0.6}, yaxis:'y' },
+    { x, y: temp, name:'Température (°C)', type:'scatter', mode:'lines+markers',
+      line:{color:'#e74c3c', width:3}, marker:{size:6}, yaxis:'y2' },
+    { x: selX, y: [sel?.pluviometrie_mm], mode:'markers', name:'Sélection',
+      marker:{size:16, color:'#2E8B57', symbol:'circle-open', line:{width:3}}, yaxis:'y' }
+  ], {
+    xaxis:{title:'Année'},
+    yaxis:{title:'mm', side:'left'},
+    yaxis2:{title:'°C', side:'right', overlaying:'y'},
+    template:'plotly_white', margin:{t:20,r:70,b:50,l:70},
+    legend:{orientation:'h', y:-0.2}
+  }, PLOT_CONFIG);
+}
+
+function renderCyclonesChart() {
+  const x = AGRICULTURE.map(r => r.annee);
+  const y = AGRICULTURE.map(r => r.nb_cyclones);
+  const selX = [selectedYear];
+  const sel = AGRICULTURE.find(r => r.annee === selectedYear);
+
+  Plotly.newPlot('chartCyclones', [
+    { x, y, type:'bar', name:'Cyclones',
+      marker:{ color: y.map(v => v >= 2 ? '#e74c3c' : v >= 1 ? '#f39c12' : '#95a5a6') } },
+    { x: selX, y: [sel?.nb_cyclones], mode:'markers', name:'Sélection',
+      marker:{size:16, color:'#2E8B57', symbol:'circle-open', line:{width:3}} }
+  ], { xaxis:{title:'Année'}, yaxis:{title:'Nombre'},
+       template:'plotly_white', margin:{t:20,r:20,b:50,l:70},
+       legend:{orientation:'h', y:-0.2} }, PLOT_CONFIG);
+}
+
+function renderTreemap() {
+  Plotly.newPlot('chartTreemap', [{
+    type:'treemap',
+    labels: COMMUNES.map(r=>r.commune),
+    parents: COMMUNES.map(()=>''),
+    values: COMMUNES.map(r=>r.production),
+    textinfo:'label+value+percent root',
+    marker:{ colors: COMMUNES.map(r=>r.rendement),
+             colorscale:'Viridis', showscale:true,
+             colorbar:{title:'t/ha'} }
+  }], { margin:{t:10,r:10,b:10,l:10} }, PLOT_CONFIG);
+}
+
+function renderBarCommuneChart() {
+  const sorted = [...COMMUNES].sort((a,b)=>b.production-a.production).slice(0,10);
+  Plotly.newPlot('chartBarCommune', [{
+    type:'bar',
+    x: sorted.map(r=>r.commune),
+    y: sorted.map(r=>r.production),
+    marker:{ color: sorted.map(r=>r.rendement),
+             colorscale:'Viridis', showscale:true,
+             colorbar:{title:'t/ha'} }
+  }], { xaxis:{tickangle:-45}, yaxis:{title:'Production (t)'},
+        template:'plotly_white', margin:{t:20,r:20,b:120,l:80} }, PLOT_CONFIG);
+}
+
+function renderBassinsChart() {
+  Plotly.newPlot('chartBassins', [
+    { x: BASSINS.map(r=>r.bassin), y: BASSINS.map(r=>r.production_t),
+      name:'Production (t)', type:'bar', marker:{color:'#2E8B57'},
+      yaxis:'y', text: BASSINS.map(r=>FMT(r.production_t)),
+      textposition:'outside' },
+    { x: BASSINS.map(r=>r.bassin), y: BASSINS.map(r=>r.surface_ha),
+      name:'Surface (ha)', type:'scatter', mode:'lines+markers',
+      line:{color:'#ff7f0e', width:3}, marker:{size:10}, yaxis:'y2' }
+  ], {
+    xaxis:{title:'Bassin'},
+    yaxis:{title:'Production (t)', side:'left'},
+    yaxis2:{title:'Surface (ha)', side:'right', overlaying:'y'},
+    template:'plotly_white', margin:{t:20,r:70,b:50,l:70},
+    legend:{orientation:'h', y:-0.2}
+  }, PLOT_CONFIG);
+}
+
+function renderEmploisChart() {
+  const l = AGRICULTURE.find(r => r.annee === selectedYear);
+  if (!l) return;
+  // Recalcul des emplois pour l'année sélectionnée
+  const ratio = l.emplois_total / 18300;
+  const data = EMPLOIS.map(e => ({
+    categorie: e.categorie,
+    nb: Math.round(e.nb * ratio)
+  }));
+  Plotly.newPlot('chartEmplois', [{
+    type:'pie',
+    labels: data.map(r=>r.categorie),
+    values: data.map(r=>r.nb),
+    hole: 0.4,
+    textinfo:'label+value+percent',
+    marker:{ colors:['#2E8B57','#3CB371','#66CDAA','#8FBC8F'] }
+  }], { margin:{t:10,r:10,b:10,l:10} }, PLOT_CONFIG);
+}
+
+function renderMeteoCharts() {
+  const dates = METEO.map(r=>r.date);
+  Plotly.newPlot('chartMeteo', [
+    { x:dates, y:METEO.map(r=>r.temperature_max), mode:'lines+markers',
+      name:'T° max', line:{color:'#e74c3c', width:2}, marker:{size:6} },
+    { x:dates, y:METEO.map(r=>r.temperature_min), mode:'lines+markers',
+      name:'T° min', line:{color:'#3498db', width:2}, marker:{size:6} }
+  ], { xaxis:{title:'Date'}, yaxis:{title:'°C'},
+       template:'plotly_white', margin:{t:20,r:20,b:50,l:70},
+       legend:{orientation:'h', y:-0.2} }, PLOT_CONFIG);
+
+  Plotly.newPlot('chartPrecip', [{
+    x:dates, y:METEO.map(r=>r.precipitations),
+    type:'bar', name:'Précipitations',
+    marker:{color:'#3498db'}
+  }], { xaxis:{title:'Date'}, yaxis:{title:'mm'},
+        template:'plotly_white', margin:{t:20,r:20,b:50,l:70} }, PLOT_CONFIG);
+}
+
+function renderMosicasChart() {
+  const d = MOSICAS;
+  Plotly.newPlot('chartMosicas', [
+    { x:d.map(r=>r.annee), y:d.map(r=>r.rcp26), name:'RCP 2.6 (+2°C)',
+      line:{color:'#28a745', width:3} },
+    { x:d.map(r=>r.annee), y:d.map(r=>r.rcp45), name:'RCP 4.5 (+3°C)',
+      line:{color:'#ffc107', width:3} },
+    { x:d.map(r=>r.annee), y:d.map(r=>r.rcp85), name:'RCP 8.5 (+6°C)',
+      line:{color:'#dc3545', width:3} }
+  ], {
+    xaxis:{title:'Année'}, yaxis:{title:'Rendement (t/ha)'},
+    template:'plotly_white',
+    legend:{orientation:'h', y:-0.2}
+  }, PLOT_CONFIG);
+}
+
+function renderSubventionsChart() {
+  const selX = [selectedYear];
+  const sel = SUBVENTIONS.find(r => r.annee === selectedYear);
+  const traces = [{
+    x: SUBVENTIONS.map(r=>r.annee),
+    y: SUBVENTIONS.map(r=>r.montant_millions_eur),
+    mode:'lines+markers',
+    name:'Subventions (M€)',
+    line:{color:'#2E8B57', width:3},
+    marker:{size:10},
+    fill:'tozeroy',
+    fillcolor:'rgba(46,139,87,0.2)'
+  }];
+  if (sel) {
+    traces.push({
+      x: selX, y: [sel.montant_millions_eur], mode:'markers', name:'Sélection',
+      marker:{size:16, color:'#e74c3c', symbol:'circle-open', line:{width:3}}
+    });
+  }
+  Plotly.newPlot('chartSubventions', traces, {
+    xaxis:{title:'Année'}, yaxis:{title:'Millions €'},
+    template:'plotly_white', margin:{t:20,r:20,b:50,l:70},
+    legend:{orientation:'h', y:-0.2}
+  }, PLOT_CONFIG);
+}
+
+// ============================================================
+// MISE À JOUR GLOBALE
+// ============================================================
+function updateAllCharts() {
+  renderKPIs();
+  renderProductionChart();
+  renderRendementChart();
+  renderWaterfallChart();
+  renderSucresChart();
+  renderBagasseChart();
+  renderElectriciteChart();
+  renderIFTChart();
+  renderClimatChart();
+  renderCyclonesChart();
+  renderEmploisChart();
+  renderSubventionsChart();
+}
+
+// ============================================================
+// INITIALISATION
+// ============================================================
+function init() {
+  initYearSelector();
+  renderTimeline();
+  renderKPIs();
+  renderProductionChart();
+  renderRendementChart();
+  renderWaterfallChart();
+  renderSucresChart();
+  renderBagasseChart();
+  renderElectriciteChart();
+  renderCanecohChart();
+  renderIFTChart();
+  renderClimatChart();
+  renderCyclonesChart();
+  renderTreemap();
+  renderBarCommuneChart();
+  renderBassinsChart();
+  renderEmploisChart();
+  renderMeteoCharts();
+  renderMosicasChart();
+  renderSubventionsChart();
+  updateYearDisplay();
+}
+
+window.addEventListener('resize', () => {
+  ['chartProduction','chartRendement','chartWaterfall','chartSucres',
+   'chartBagasse','chartElectricite','chartCanecoh','chartIFT',
+   'chartClimat','chartCyclones','chartTreemap','chartBarCommune',
+   'chartBassins','chartEmplois','chartMeteo','chartPrecip',
+   'chartMosicas','chartSubventions'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.data) Plotly.Plots.resize(el);
+  });
+});
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
