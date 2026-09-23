@@ -4,7 +4,7 @@
 [![Plotly](https://img.shields.io/badge/Plotly-2.27-3F4F75?style=for-the-badge&logo=plotly&logoColor=white)](https://plotly.com/javascript/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.30%2B-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://streamlit.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](https://opensource.org/licenses/MIT)
-[![Made in La Réunion](https://img.shields.io/badge/Made%20in-La%20R%C3%A9union-2E8B57?style=for-the-badge&logo=leaflet&logoColor=white)](#)
+[![Made in La Réunion](https://img.shields.io/badge/Made%20in-La%20R%C3%A9union-2E8B57?style=for-the-badge)](#)
 
 [![CIRAD Dataverse](https://img.shields.io/badge/Data-CIRAD%20Dataverse-0055A4?style=for-the-badge)](https://dataverse.cirad.fr/)
 [![ODEADOM](https://img.shields.io/badge/Data-ODEADOM-2E8B57?style=for-the-badge)](https://www.odeadom.fr/)
@@ -59,8 +59,8 @@
 
 ```bash
 # 1. Cloner le dépôt
-git clone https://github.com/votre-utilisateur/dashboard-canne-reunion.git
-cd dashboard-canne-reunion
+git clone https://github.com/gunout/Dashboard-Cannes-Productions-Reunion.git
+cd Dashboard-Cannes-Productions-Reunion
 
 # 2. Créer un environnement virtuel
 python3 -m venv venv
@@ -72,7 +72,7 @@ venv\Scripts\activate      # Windows
 pip install -r requirements.txt
 
 # 4. Lancer le script
-python3 sc.py
+python3 Dashboard.py
 
 # 5. Ouvrir le dashboard
 open dashboard_canne_reunion.html      # macOS
@@ -96,8 +96,8 @@ plotly>=5.18.0
 ## 📁 Structure du projet
 
 ```
-dashboard-canne-reunion/
-├── sc.py                           # Script principal Python
+Dashboard-Cannes-Productions-Reunion/
+├── Dashboard.py                    # Script principal Python
 ├── dashboard_canne_reunion.html    # Dashboard généré (autonome)
 ├── requirements.txt                # Dépendances Python
 ├── README.md                       # Ce fichier
@@ -120,7 +120,7 @@ dashboard-canne-reunion/
            │
            ▼
 ┌─────────────────────┐
-│  sc.py              │
+│  Dashboard.py       │
 │  • Téléchargement   │
 │  • Agrégation       │
 │  • Sérialisation    │
@@ -159,10 +159,9 @@ ls -lh dashboard_canne_reunion.html
 
 # Vérifier la validité JSON des données injectées
 python3 -c "
-import re
+import re, json
 html = open('dashboard_canne_reunion.html').read()
 data = re.search(r'const AGRICULTURE = (\[.*?\]);', html, re.DOTALL)
-import json
 records = json.loads(data.group(1))
 print(f'{len(records)} années chargées')
 print(f'Première : {records[0][\"annee\"]}')
@@ -191,8 +190,7 @@ Dans `get_timeline_events()`, ajoutez une entrée :
  "description": "Description détaillée..."},
 ```
 
-Types disponibles : `histoire`, `politique`, `economie`, `climat`,
-`recherche`, `energie`, `institution`.
+Types disponibles : `histoire`, `politique`, `economie`, `climat`, `recherche`, `energie`, `institution`.
 
 ### Ajouter un graphique
 
@@ -260,9 +258,9 @@ Ce projet est sous licence **MIT** — voir le fichier [LICENSE](LICENSE) pour p
 
 ## 👤 Auteur
 
-**Votre Nom**
-- GitHub : [@votre-utilisateur](https://github.com/votre-utilisateur)
-- Email : votre.email@example.com
+**gunout**
+- GitHub : [@gunout](https://github.com/gunout)
+- Dépôt : [Dashboard-Cannes-Productions-Reunion](https://github.com/gunout/Dashboard-Cannes-Productions-Reunion)
 
 ---
 
@@ -291,7 +289,7 @@ Si ce dashboard vous est utile, n'hésitez pas à :
 
 **🌴 Fait avec ❤️ à La Réunion 🌴**
 
-[![GitHub stars](https://img.shields.io/github/stars/votre-utilisateur/dashboard-canne-reunion?style=social)](https://github.com/votre-utilisateur/dashboard-canne-reunion)
-[![GitHub forks](https://img.shields.io/github/forks/votre-utilisateur/dashboard-canne-reunion?style=social)](https://github.com/votre-utilisateur/dashboard-canne-reunion/fork)
+[![GitHub stars](https://img.shields.io/github/stars/gunout/Dashboard-Cannes-Productions-Reunion?style=social)](https://github.com/gunout/Dashboard-Cannes-Productions-Reunion)
+[![GitHub forks](https://img.shields.io/github/forks/gunout/Dashboard-Cannes-Productions-Reunion?style=social)](https://github.com/gunout/Dashboard-Cannes-Productions-Reunion/fork)
 
 </div>
