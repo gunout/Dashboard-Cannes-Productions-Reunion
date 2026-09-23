@@ -21,6 +21,12 @@
 
 ---
 
+## 🌐 Démo en ligne
+
+👉 **[Voir le dashboard en direct](https://gunout.github.io/Dashboard-Cannes-Productions-Reunion/)**
+
+---
+
 ## 📊 Aperçu
 
 | Section | Contenu |
@@ -75,9 +81,9 @@ pip install -r requirements.txt
 python3 sc.py
 
 # 5. Ouvrir le dashboard généré
-open dashboard_canne_reunion.html      # macOS
-xdg-open dashboard_canne_reunion.html  # Linux
-start dashboard_canne_reunion.html     # Windows
+open index.html      # macOS
+xdg-open index.html  # Linux
+start index.html     # Windows
 ```
 
 ---
@@ -97,12 +103,12 @@ plotly>=5.18.0
 
 ```
 Dashboard-Cannes-Productions-Reunion/
-├── sc.py                           # Script principal Python (téléchargement + génération HTML)
-├── dashboard_canne_reunion.html    # Dashboard généré (autonome, 18 graphiques)
-├── requirements.txt                # Dépendances Python
-├── README.md                       # Ce fichier
-├── LICENSE                         # Licence MIT
-└── cirad_cache/                    # Cache des datasets CIRAD (optionnel)
+├── sc.py                  # Script principal Python (téléchargement + génération HTML)
+├── index.html             # Dashboard autonome généré (18 graphiques Plotly)
+├── requirements.txt       # Dépendances Python
+├── README.md              # Ce fichier
+├── LICENSE                # Licence MIT
+└── cirad_cache/           # Cache des datasets CIRAD (optionnel)
 ```
 
 ---
@@ -118,7 +124,7 @@ Le script `sc.py` est le cœur du projet. Il exécute les 6 étapes suivantes :
 | **3/6** | `aggregate_agricultural_data()` | Agrège les données annuelles 2000-2024 (production, sucre, rhum, bagasse, IFT, climat, emplois) |
 | **4/6** | `aggregate_extended_data()` | Charge les données étendues (bagasse OER, pellets, CanécoH V2, BSV, MOSICAS, bassins, sucres, emplois, subventions) |
 | **5/6** | `get_timeline_events()` | Charge les 23 événements de la frise chronologique (1810-2025) |
-| **6/6** | `generate_html_with_data()` | Génère le HTML autonome avec injection JSON via `.replace("__TOKEN__", valeur)` |
+| **6/6** | `generate_html_with_data()` | Génère `index.html` avec injection JSON via `.replace("__TOKEN__", valeur)` |
 
 ### Points techniques clés
 
@@ -126,6 +132,7 @@ Le script `sc.py` est le cœur du projet. Il exécute les 6 étapes suivantes :
 - **Injection par tokens** : le template HTML utilise `__AGRICULTURE_DATA__`, `__COMMUNE_DATA__`, etc. — évite le `KeyError: ' box-sizing'` causé par `.format()` sur du CSS.
 - **Préfixe `doi:`** : obligatoire pour l'API Dataverse (sans lui : `400 Client Error`).
 - **Encodage UTF-8** : `output_path.write_text(html_content, encoding='utf-8')` — évite les problèmes d'accents réunionnais.
+- **Sortie** : le fichier généré est `index.html`, directement exploitable par GitHub Pages ou tout serveur web.
 
 ### Exécution typique
 
@@ -136,8 +143,6 @@ Dashboard Canne à Sucre - Version enrichie
 
 [1/6] Téléchargement des datasets CIRAD Dataverse...
   - canne_cover_crops_1: doi:10.18167/DVN1/SLGV2M
-    ✓ 5 fichier(s) — Experimental dataset on the use of cover crops...
-  - canne_cover_crops_2: doi:10.18167/DVN1/WTFBBY
     ✓ 5 fichier(s) — Experimental dataset on the use of cover crops...
   ...
 
@@ -163,7 +168,7 @@ Dashboard Canne à Sucre - Version enrichie
     ✓ 23 événements historiques
 
 [6/6] Génération du HTML...
-    ✓ Fichier : dashboard_canne_reunion.html
+    ✓ Fichier : index.html
 
 ============================================================
 ✅ Terminé ! Ouvrez le fichier HTML dans votre navigateur.
@@ -193,12 +198,33 @@ Dashboard Canne à Sucre - Version enrichie
            │
            ▼
 ┌─────────────────────┐
-│  HTML autonome      │
+│  index.html         │
 │  • Plotly.js        │
 │  • JSON injecté     │
 │  • Interactions     │
 └─────────────────────┘
 ```
+
+---
+
+## 🌐 Déploiement GitHub Pages
+
+Le fichier `index.html` est automatiquement servi par GitHub Pages à la racine du dépôt.
+
+### Configuration
+
+1. **Settings** → **Pages**
+2. **Source** : `Deploy from a branch`
+3. **Branch** : `main` (ou `gh-pages`) / `/ (root)`
+4. **Save**
+
+### URL
+
+```
+https://gunout.github.io/Dashboard-Cannes-Productions-Reunion/
+```
+
+> ⚠️ Le fichier `index.html` **doit être commité** dans le dépôt (ne pas le mettre dans `.gitignore` si vous utilisez GitHub Pages).
 
 ---
 
@@ -220,12 +246,12 @@ Dashboard Canne à Sucre - Version enrichie
 
 ```bash
 # Vérifier que le HTML a bien été généré
-ls -lh dashboard_canne_reunion.html
+ls -lh index.html
 
 # Vérifier la validité JSON des données injectées
 python3 -c "
 import re, json
-html = open('dashboard_canne_reunion.html').read()
+html = open('index.html').read()
 data = re.search(r'const AGRICULTURE = (\[.*?\]);', html, re.DOTALL)
 records = json.loads(data.group(1))
 print(f'{len(records)} années chargées')
@@ -268,6 +294,17 @@ Types disponibles : `histoire`, `politique`, `economie`, `climat`, `recherche`, 
 
 3. Appelez-la dans `init()` et `updateAllCharts()`
 
+### Changer le nom du fichier de sortie
+
+Dans `sc.py`, fonction `generate_html_with_data()` :
+
+```python
+def generate_html_with_data(
+    agriculture_df, commune_df, meteo_df, extended, timeline_events,
+    output_path: str = "index.html"   # ← modifiez ici si besoin
+) -> str:
+```
+
 ---
 
 ## 🐛 Dépannage
@@ -279,6 +316,7 @@ Types disponibles : `histoire`, `politique`, `economie`, `climat`, `recherche`, 
 | `400 Client Error` Dataverse | Ajoutez le préfixe `doi:` devant l'identifiant du dataset |
 | Graphiques non affichés | Vérifiez votre connexion internet (CDN Plotly : `cdn.plot.ly`) |
 | Accents cassés dans le HTML | Vérifiez `encoding='utf-8'` dans `write_text()` |
+| Page blanche sur GitHub Pages | Vérifiez que `index.html` est bien à la racine du dépôt |
 
 ---
 
@@ -288,6 +326,7 @@ Types disponibles : `histoire`, `politique`, `economie`, `climat`, `recherche`, 
 - [x] Frise chronologique interactive (23 événements)
 - [x] Sélecteur d'année synchronisé
 - [x] Script `sc.py` autonome (téléchargement + génération HTML)
+- [x] Sortie `index.html` compatible GitHub Pages
 - [ ] Connexion API Météo-France réelle (clé API requise)
 - [ ] Carte Leaflet avec parcelles géolocalisées
 - [ ] Export PDF automatique
@@ -328,6 +367,7 @@ Ce projet est sous licence **MIT** — voir le fichier [LICENSE](LICENSE) pour p
 **gunout**
 - GitHub : [@gunout](https://github.com/gunout)
 - Dépôt : [Dashboard-Cannes-Productions-Reunion](https://github.com/gunout/Dashboard-Cannes-Productions-Reunion)
+- Démo : [gunout.github.io/Dashboard-Cannes-Productions-Reunion](https://gunout.github.io/Dashboard-Cannes-Productions-Reunion/)
 
 ---
 
@@ -367,6 +407,7 @@ Les 5 datasets suivants sont téléchargés par `sc.py` via l'API Dataverse :
 - [Plotly.js](https://plotly.com/javascript/) — Bibliothèque de graphiques utilisée dans le dashboard
 - [Pandas](https://pandas.pydata.org/docs/) — Manipulation des DataFrames
 - [Streamlit](https://docs.streamlit.io/) — Framework utilisé pour la version initiale
+- [GitHub Pages](https://pages.github.com/) — Hébergement statique du dashboard
 
 ### Données historiques de référence
 
@@ -407,3 +448,5 @@ Si ce dashboard vous est utile, n'hésitez pas à :
 [![GitHub forks](https://img.shields.io/github/forks/gunout/Dashboard-Cannes-Productions-Reunion?style=social)](https://github.com/gunout/Dashboard-Cannes-Productions-Reunion/fork)
 
 </div>
+
+---
